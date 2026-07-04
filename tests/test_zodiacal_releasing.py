@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from hellenistic_astrology.core.timezone import resolve_utc
 from hellenistic_astrology.core.zodiacal_releasing import (
     SIGN_RULERS,
     ZODIACAL_RELEASING_YEARS,
@@ -10,6 +11,8 @@ from hellenistic_astrology.core.zodiacal_releasing import (
     releasing_tree,
     sub_periods,
 )
+
+from .regression_helpers import birth_data_from_fixture, load_fixture
 
 
 def test_years_table_has_all_signs():
@@ -138,3 +141,30 @@ def test_active_period_returns_none_outside_range():
     horizon = datetime(2010, 1, 1)
     tree = releasing_tree("Lion", birth, horizon, max_level=1)
     assert active_period(tree, 1, datetime(1999, 1, 1)) is None
+
+
+# La technique (algorithme, table des années) est la même quelle que soit la
+# Part de départ : seule change le signe de départ (Fortune ou Esprit). Les
+# tests ci-dessous ancrent explicitement l'usage à partir de la Part de
+# l'Esprit sur les deux thèmes de référence, en plus des tests génériques
+# ci-dessus qui couvrent déjà l'algorithme pour des signes de départ
+# arbitraires — aucune fixture Anthony/Liam ne documente de périodes de
+# libération zodiacale attendues (comme pour la Part de Fortune), donc ces
+# tests valident le branchement (signe de départ, date de naissance réelle),
+# pas des dates de résultat vérifiées indépendamment.
+@pytest.mark.parametrize(
+    "fixture_name, expected_spirit_sign",
+    [("anthony", "Taureau"), ("liam", "Cancer")],
+)
+def test_l1_from_part_of_spirit_reference_charts(fixture_name, expected_spirit_sign):
+    fixture = load_fixture(fixture_name)
+    assert fixture["part_of_spirit"]["sign"] == expected_spirit_sign
+
+    birth = birth_data_from_fixture(fixture)
+    birth_dt = resolve_utc(birth)
+    horizon = birth_dt.replace(year=birth_dt.year + 80)
+
+    periods = releasing_tree(expected_spirit_sign, birth_dt, horizon, max_level=1)
+
+    assert periods[0].sign == expected_spirit_sign
+    assert periods[0].start == birth_dt
