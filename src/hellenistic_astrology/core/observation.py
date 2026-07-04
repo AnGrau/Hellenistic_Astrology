@@ -14,6 +14,7 @@ class PointPosition:
     essential_dignity: str | None = None
     triplicity_dignity: str | None = None
     bound_dignity: str | None = None
+    decan_dignity: str | None = None
     sect_role: str | None = None
     # Vitesse écliptique signée (°/jour), renseignée uniquement pour les
     # planètes classiques : nécessaire à la règle des 3° hors-signe

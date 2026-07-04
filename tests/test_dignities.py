@@ -3,6 +3,8 @@ import pytest
 from hellenistic_astrology.core.dignities import (
     EGYPTIAN_BOUNDS,
     bound_dignity,
+    decan_dignity,
+    decan_ruler,
     egyptian_bound_ruler,
     essential_dignity,
     mutual_receptions_by_domicile,
@@ -139,3 +141,61 @@ def test_bound_dignity_when_planet_is_its_own_bound_ruler():
 
 def test_bound_dignity_none_when_not_ruler():
     assert bound_dignity("Mars", "Bélier", 3) is None
+
+
+# Table complète des 36 décans (ordre chaldéen cyclant en continu), vérifiée
+# contre deux sources indépendantes (synthèse citant Valens/Hephaistion et
+# table complète Augurine) avant d'écrire cette table de test.
+DECANS_36 = {
+    "Bélier": ("Mars", "Soleil", "Vénus"),
+    "Taureau": ("Mercure", "Lune", "Saturne"),
+    "Gémeaux": ("Jupiter", "Mars", "Soleil"),
+    "Cancer": ("Vénus", "Mercure", "Lune"),
+    "Lion": ("Saturne", "Jupiter", "Mars"),
+    "Vierge": ("Soleil", "Vénus", "Mercure"),
+    "Balance": ("Lune", "Saturne", "Jupiter"),
+    "Scorpion": ("Mars", "Soleil", "Vénus"),
+    "Sagittaire": ("Mercure", "Lune", "Saturne"),
+    "Capricorne": ("Jupiter", "Mars", "Soleil"),
+    "Verseau": ("Vénus", "Mercure", "Lune"),
+    "Poissons": ("Saturne", "Jupiter", "Mars"),
+}
+
+
+@pytest.mark.parametrize("sign, expected_rulers", DECANS_36.items())
+def test_decan_ruler_all_36_decans(sign, expected_rulers):
+    assert decan_ruler(sign, 5) == expected_rulers[0]
+    assert decan_ruler(sign, 15) == expected_rulers[1]
+    assert decan_ruler(sign, 25) == expected_rulers[2]
+
+
+def test_decan_ruler_boundaries():
+    assert decan_ruler("Bélier", 0) == "Mars"
+    assert decan_ruler("Bélier", 9.9999) == "Mars"
+    assert decan_ruler("Bélier", 10) == "Soleil"
+    assert decan_ruler("Bélier", 19.9999) == "Soleil"
+    assert decan_ruler("Bélier", 20) == "Vénus"
+    assert decan_ruler("Bélier", 29.9999) == "Vénus"
+
+
+def test_decan_ruler_cycles_continuously_across_sign_boundary():
+    # Bélier 3e décan = Vénus, Taureau 1er décan reprend au suivant
+    # dans l'ordre chaldéen (Mercure), sans réinitialiser sur le
+    # maître du signe.
+    assert decan_ruler("Bélier", 25) == "Vénus"
+    assert decan_ruler("Taureau", 5) == "Mercure"
+
+
+def test_decan_ruler_rejects_out_of_range_degree():
+    with pytest.raises(ValueError):
+        decan_ruler("Bélier", 30)
+    with pytest.raises(ValueError):
+        decan_ruler("Bélier", -1)
+
+
+def test_decan_dignity_when_planet_is_its_own_decan_ruler():
+    assert decan_dignity("Mars", "Bélier", 5) == "Maître du décan"
+
+
+def test_decan_dignity_none_when_not_ruler():
+    assert decan_dignity("Vénus", "Bélier", 5) is None

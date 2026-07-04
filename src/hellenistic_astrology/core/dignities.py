@@ -184,3 +184,33 @@ def bound_dignity(planet: str, sign: str, degree_in_sign: float) -> str | None:
     if planet == egyptian_bound_ruler(sign, degree_in_sign):
         return "Maître du terme (bornes égyptiennes)"
     return None
+
+
+# Décans (faces) : chaque signe est divisé en 3 segments égaux de 10°,
+# maîtres selon l'ordre chaldéen — qui cycle en continu à travers les 36
+# décans du zodiaque, sans se réinitialiser à chaque signe. Bélier 1er décan
+# = Mars (tel qu'utilisé par Vettius Valens et Hephaistion). Vérifié contre
+# deux sources indépendantes et cohérentes entre elles (synthèse citant
+# Valens/Hephaistion, table complète des 36 décans d'Augurine) — aucune
+# fixture Anthony/Liam ne documente les décans non plus.
+CHALDEAN_ORDER: tuple[str, ...] = ("Saturne", "Jupiter", "Mars", "Soleil", "Vénus", "Mercure", "Lune")
+
+# Position de Mars (maître du 1er décan du Bélier) dans CHALDEAN_ORDER.
+_ARIES_FIRST_DECAN_OFFSET = CHALDEAN_ORDER.index("Mars")
+
+
+def decan_ruler(sign: str, degree_in_sign: float) -> str:
+    """Maître du décan (face) occupé par ce degré dans ce signe."""
+    if not (0 <= degree_in_sign < 30):
+        raise ValueError(f"degree_in_sign doit être dans [0, 30) : {degree_in_sign}")
+    decan_within_sign = int(degree_in_sign // 10)  # 0, 1 ou 2
+    global_decan_index = index_of_sign(sign) * 3 + decan_within_sign
+    return CHALDEAN_ORDER[(global_decan_index + _ARIES_FIRST_DECAN_OFFSET) % 7]
+
+
+def decan_dignity(planet: str, sign: str, degree_in_sign: float) -> str | None:
+    """"Maître du décan" si `planet` est elle-même la maîtresse du décan
+    (face) qu'elle occupe, sinon None."""
+    if planet == decan_ruler(sign, degree_in_sign):
+        return "Maître du décan"
+    return None
