@@ -17,7 +17,7 @@ Le dépôt sera versionné sur GitHub.
 - Système de maisons : signes entiers (Whole Sign).
 - Zodiaque tropical.
 - Aspects ptoléméens uniquement (conjonction, sextile, carré, trigone, opposition), considérés par signe plutôt que par degré d'orbe — plus l'écart en degré est faible, plus l'aspect est actif.
-- Aspects hors-signe ignorés, sauf si la planète la plus rapide applique à moins de 3° à la planète la plus lente.
+- Aspects hors-signe ignorés, sauf si la planète la plus rapide applique à moins de 3° à la planète la plus lente. Cette proximité se mesure sur l'écart réel en longitude écliptique (les deux planètes doivent être proches de la frontière commune entre leurs signes adjacents), pas sur une coïncidence de degré-dans-signe : Mercure à 11°57' Sagittaire et Vénus à 11°51' Scorpion ont des degrés-dans-signe presque identiques mais restent à ~30° d'écart réel, car aucun des deux n'est proche de la frontière Scorpion/Sagittaire (cas vérifié sur le thème d'Anthony — la règle ne s'active pas).
 - Solaire (retour solaire) : lieu de naissance, Soleil non précessé.
 - Secte de la carte déterminée par la position du Soleil au-dessus ou au-dessous de l'horizon ; la Part de Fortune et la Part de l'Esprit changent de formule selon secte diurne/nocturne (piège fréquent à tester explicitement).
 - Rôle de secte par planète : règle symétrique retenue pour le luminaire « en désaccord » avec la secte de la carte — toujours « Hors secte (jour) » ou « Hors secte (nuit) », jamais « Neutre » (un des deux thèmes de référence contenait une asymétrie sur ce point, corrigée après validation explicite).
@@ -60,7 +60,10 @@ Ces URLs pointent vers les pages officielles (éditeur ou auteur/autrice). Si le
   - 2a — `core/dignities.py` (dignités essentielles domicile/exaltation/exil/chute/pérégrin, au niveau du signe ; table des maîtrises traditionnelles) et `core/sect.py` étendu avec le rôle de secte par planète.
   - 2b — `docgen/builder.py` génère la Phase 1 (Observation) en `.docx` via python-docx (tableaux positions + maîtrises), à partir de l'objet `Observation` uniquement. `scripts/generate_docx.py` permet une génération manuelle vers `output/` (gitignored). Phases 2 et 3 (rédaction, interprétation) restent hors périmètre de docgen : ce sont des tâches de génération de texte, pas de mise en forme de données.
   - Validé par `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py` en plus des tests de régression.
-- **Jalons suivants** : aspects par signe, dignités essentielles plus fines (bornes/triplicité si besoin), libération zodiacale, puis Skill Claude (`skills/hellenistic-astrology/SKILL.md`), MCP uniquement si un besoin réel émerge.
+- **Jalon 3 (terminé)** : `core/aspects.py` — regroupement des points en amas par signe, aspect ptoléméen par signe entre chaque paire d'amas, règle des 3° hors-signe basée sur la proximité écliptique réelle. Les 31 relations d'amas des deux thèmes (10 pour Anthony, 21 pour Liam) ont été vérifiées à la main contre le texte "Aspects par signe relevés" des documents de référence. Validé par `tests/test_aspects.py` et les tests de régression étendus.
+  - **Limite connue** : aucun des deux thèmes de référence ne déclenche la règle des 3° (les deux documents confirment explicitement qu'elle ne s'active pas) — le cas positif n'est couvert que par un test synthétique, sans validation sur données réelles. À surveiller si un futur thème la déclenche.
+  - Rendu textuel des aspects (puces façon "X et Y conjoints en...", commentaires interprétatifs) volontairement hors périmètre : c'est une tâche de rédaction, pas de calcul ni de mise en forme mécanique — docgen n'a pas été touché par ce jalon.
+- **Jalons suivants** : dignités essentielles plus fines (bornes/triplicité si besoin), libération zodiacale, rendu textuel des aspects, puis Skill Claude (`skills/hellenistic-astrology/SKILL.md`), MCP uniquement si un besoin réel émerge.
 
 ## Cas de test de référence (vérité terrain)
 
@@ -69,13 +72,13 @@ Deux thèmes ont déjà été analysés manuellement et validés : ils servent d
 - **Anthony** — 20 novembre 1970, 23h10 (CET), Paris 14e, France (48°49'59" N, 2°19'36" E). Thème nocturne. Part de Fortune attendue : Scorpion 20°08'. Ascendant Lion, MC Taureau.
 - **Liam** — 19 octobre 2005, 15h50 (CEST), Vitry-sur-Seine, France (48°47' N, 2°24' E). Thème diurne. Part de Fortune attendue : Lion 27°60' (= 28°00', notation normalisée puisque 60' = 1°, confirmé par l'utilisateur). Ascendant Verseau, MC Sagittaire.
 
-Tout module de calcul (positions, maisons, secte, dignités, Lots) doit être testé contre ces deux thèmes avant d'être considéré fiable.
+Tout module de calcul (positions, maisons, secte, dignités, Lots, aspects) doit être testé contre ces deux thèmes avant d'être considéré fiable.
 
-**Ces données de naissance ne sont jamais poussées sur GitHub** : `/References` (les `.docx` sources), `/tests/fixtures` (les valeurs transcrites en JSON) et `/output` (les `.docx` générés par `scripts/generate_docx.py`) sont dans `.gitignore`. Le code des tests (`tests/test_regression_*.py`, `tests/test_timezone.py`, `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py`) reste versionné ; seules les données personnelles qu'il consomme ou produit restent locales.
+**Ces données de naissance ne sont jamais poussées sur GitHub** : `/References` (les `.docx` sources), `/tests/fixtures` (les valeurs transcrites en JSON) et `/output` (les `.docx` générés par `scripts/generate_docx.py`) sont dans `.gitignore`. Le code des tests (`tests/test_regression_*.py`, `tests/test_timezone.py`, `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py`, `tests/test_aspects.py`) reste versionné ; seules les données personnelles qu'il consomme ou produit restent locales.
 
 ## Ce que Claude Code ne doit pas faire sans validation explicite
 
 - Ne pas modifier les réglages astrologiques listés ci-dessus (ce sont des choix méthodologiques assumés par l'utilisateur, pas des paramètres à optimiser).
 - Ne pas remplacer les livres de référence ni en ajouter d'autres sans demande explicite.
 - Ne pas publier ou committer de données personnelles de tiers (dates de naissance, lieux) au-delà des deux cas de test ci-dessus, qui ont déjà été partagés volontairement par l'utilisateur — et même pour ces deux cas, ne jamais retirer `/References`, `/tests/fixtures` ou `/output` du `.gitignore` sans demande explicite.
-- Ne pas choisir seul les jalons suivants (aspects, libération zodiacale, Skill, MCP) sans validation explicite, même si la trajectoire générale est déjà actée ci-dessus.
+- Ne pas choisir seul les jalons suivants (rendu textuel des aspects, libération zodiacale, Skill, MCP) sans validation explicite, même si la trajectoire générale est déjà actée ci-dessus.
