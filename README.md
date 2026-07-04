@@ -2,6 +2,15 @@
 
 Calcul et mise en forme de thèmes natals en astrologie hellénistique (signes entiers). Voir `CLAUDE.md` pour le contexte complet du projet, les réglages astrologiques et la roadmap.
 
+## Intentions
+
+Au-delà du thème natal lui-même, ce projet sert aussi de terrain d'expérimentation pour :
+
+- tester Claude Code sur un projet réel, de bout en bout ;
+- tester des workflows agentiques (planification, questions de cadrage, itération) ;
+- tester les mécanismes d'extension de Claude — Skills, plugins, MCP — voir `.claude/skills/`, `.mcp.json` ;
+- le tout appliqué à un sujet volontairement choisi hors du champ professionnel/industrie habituel.
+
 ## Installation
 
 ```bash
