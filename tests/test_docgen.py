@@ -1,11 +1,16 @@
+from docx import Document
 import pytest
 
+from hellenistic_astrology.core import dignities as dignities_module
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
 from hellenistic_astrology.core.dignities import MutualReception
+from hellenistic_astrology.core.observation import Observation, PointPosition
 from hellenistic_astrology.docgen.builder import (
+    MINOR_DIGNITIES_HEADER,
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
+    add_minor_dignities_table,
     build_observation_document,
     cluster_aspect_text,
     conjunction_text,
@@ -94,6 +99,34 @@ def test_mutual_reception_text():
     )
 
 
+def test_add_minor_dignities_table_uses_dash_for_missing_values():
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    planets = [
+        PointPosition(
+            name="Mars",
+            sign="Bélier",
+            degree_in_sign=3,
+            house=1,
+            triplicity_dignity="Maître de triplicité (jour)",
+            bound_dignity=None,
+            decan_dignity="Maître du décan",
+        ),
+        PointPosition(name="Vénus", sign="Bélier", degree_in_sign=3, house=1),
+    ]
+    observation = Observation(
+        name="Test", sect="diurne", ascendant=ascendant, midheaven=midheaven, planets=planets
+    )
+    document = Document()
+
+    table = add_minor_dignities_table(document, observation)
+
+    mars_row = [cell.text for cell in table.rows[1].cells]
+    assert mars_row == ["Mars", "Maître de triplicité (jour)", "—", "Maître du décan"]
+    venus_row = [cell.text for cell in table.rows[2].cells]
+    assert venus_row == ["Vénus", "—", "—", "—"]
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -104,9 +137,9 @@ def test_build_observation_document_structure(fixture_name):
     assert [p.text for p in document.paragraphs if p.style.name == "Heading 1"] == [
         "Phase 1 — Observation"
     ]
-    assert len(document.tables) == 2
+    assert len(document.tables) == 3
 
-    positions_table, rulerships_table = document.tables
+    positions_table, rulerships_table, minor_dignities_table = document.tables
 
     header_row = [cell.text for cell in positions_table.rows[0].cells]
     assert header_row == POSITIONS_HEADER
@@ -142,8 +175,37 @@ def test_build_observation_document_structure(fixture_name):
     assert mercury_row[1] == ", ".join(expected_mercury["domicile_signs"])
     assert mercury_row[2] == ", ".join(str(h) for h in expected_mercury["houses_governed"])
 
+    minor_header = [cell.text for cell in minor_dignities_table.rows[0].cells]
+    assert minor_header == MINOR_DIGNITIES_HEADER
+    assert len(minor_dignities_table.rows) == 1 + 7
+
+    # Recalcule les valeurs attendues depuis les mêmes fonctions core.dignities,
+    # appliquées à la position réellement calculée (pas la fixture, sujette à
+    # une tolérance d'arrondi qui pourrait tomber près d'une frontière de
+    # borne/décan) : ceci teste le branchement docgen, pas l'exactitude
+    # astrologique déjà couverte par tests/test_dignities.py.
+    for row in minor_dignities_table.rows[1:]:
+        planet_name, triplicity_cell, bound_cell, decan_cell = (c.text for c in row.cells)
+        actual_planet = observation.planet(planet_name)
+        assert triplicity_cell == (
+            dignities_module.triplicity_dignity(planet_name, actual_planet.sign) or "—"
+        )
+        assert bound_cell == (
+            dignities_module.bound_dignity(
+                planet_name, actual_planet.sign, actual_planet.degree_in_sign
+            )
+            or "—"
+        )
+        assert decan_cell == (
+            dignities_module.decan_dignity(
+                planet_name, actual_planet.sign, actual_planet.degree_in_sign
+            )
+            or "—"
+        )
+
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
     assert heading2_texts[-1] == "Aspects par signe relevés"
+    assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
 
     fixture_clusters = [
         SignCluster(sign=c["sign"], house=c["house"], members=tuple(c["members"]))

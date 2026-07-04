@@ -32,6 +32,9 @@ POSITIONS_COLUMN_WIDTHS_DXA = [1700, 1300, 1100, 900, 1900, 1300, 1600]
 RULERSHIPS_HEADER = ["Planète", "Domiciles gouvernés", "Maisons régies depuis l'Ascendant"]
 RULERSHIPS_COLUMN_WIDTHS_DXA = [2400, 3200, 3200]
 
+MINOR_DIGNITIES_HEADER = ["Astre", "Triplicité", "Terme (bornes égyptiennes)", "Décan"]
+MINOR_DIGNITIES_COLUMN_WIDTHS_DXA = [1700, 2900, 2900, 2300]
+
 
 def format_dms(decimal_degrees: float) -> str:
     """Formate un degré décimal dans le signe en notation degrés/minutes.
@@ -88,6 +91,24 @@ def add_rulerships_table(document: Document, observation: Observation):
         cells[0].text = rulership.planet
         cells[1].text = ", ".join(rulership.domicile_signs)
         cells[2].text = ", ".join(str(house) for house in rulership.houses_governed)
+    return table
+
+
+def add_minor_dignities_table(document: Document, observation: Observation):
+    """Table des dignités mineures (triplicité, bornes égyptiennes, décans) —
+    séparée de la table des positions, qui correspond exactement au tableau
+    des documents de référence (lesquels ne couvrent pas ces dignités)."""
+    table = document.add_table(rows=1, cols=len(MINOR_DIGNITIES_HEADER))
+    for cell, text in zip(table.rows[0].cells, MINOR_DIGNITIES_HEADER):
+        styles.set_header_cell(cell, text)
+    styles.style_table(table, MINOR_DIGNITIES_COLUMN_WIDTHS_DXA)
+
+    for planet in observation.planets:
+        cells = table.add_row().cells
+        cells[0].text = planet.name
+        cells[1].text = planet.triplicity_dignity or "—"
+        cells[2].text = planet.bound_dignity or "—"
+        cells[3].text = planet.decan_dignity or "—"
     return table
 
 
@@ -174,6 +195,9 @@ def build_observation_document(observation: Observation) -> Document:
         "Maîtrises traditionnelles (règle de rulership unique par planète)", level=2
     )
     add_rulerships_table(document, observation)
+
+    document.add_heading("Dignités mineures (triplicité, bornes, décans)", level=2)
+    add_minor_dignities_table(document, observation)
 
     document.add_heading("Aspects par signe relevés", level=2)
     add_aspects_section(document, observation)
