@@ -1,10 +1,18 @@
+from datetime import timedelta
 from pathlib import Path
 
-from . import aspects, dignities, ephemeris, geocoding, houses, lots, sect
+from . import aspects, dignities, ephemeris, geocoding, houses, lots, sect, zodiacal_releasing
 from .observation import Observation, PointPosition
 from .timezone import BirthData, resolve_utc
 
 DEFAULT_EPHE_PATH = str(Path(__file__).resolve().parents[3] / "data" / "ephe")
+
+# Horizon de calcul de la libération zodiacale (jusqu'à quel âge afficher les
+# chapitres) : limite pratique arbitraire, pas une contrainte de la technique
+# elle-même (voir core.zodiacal_releasing). 365,25 jours/an (plutôt que
+# `datetime.replace(year=...)`) pour éviter un 29 février qui n'existe pas
+# dans l'année cible.
+ZODIACAL_RELEASING_HORIZON_YEARS = 100
 
 
 def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> Observation:
@@ -102,6 +110,14 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
     positions_by_planet = {p.name: p.sign for p in planets}
     mutual_receptions = dignities.mutual_receptions_by_domicile(positions_by_planet)
 
+    zr_horizon = utc_dt + timedelta(days=365.25 * ZODIACAL_RELEASING_HORIZON_YEARS)
+    zodiacal_releasing_fortune = zodiacal_releasing.releasing_chapters(
+        part_of_fortune.sign, utc_dt, zr_horizon
+    )
+    zodiacal_releasing_spirit = zodiacal_releasing.releasing_chapters(
+        part_of_spirit.sign, utc_dt, zr_horizon
+    )
+
     return Observation(
         name=birth.name,
         sect="diurne" if diurnal else "nocturne",
@@ -118,4 +134,6 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         all_points=all_points,
         clusters=clusters,
         cluster_aspects=cluster_aspects,
+        zodiacal_releasing_fortune=zodiacal_releasing_fortune,
+        zodiacal_releasing_spirit=zodiacal_releasing_spirit,
     )

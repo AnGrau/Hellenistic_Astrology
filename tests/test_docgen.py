@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from docx import Document
 import pytest
 
@@ -6,16 +8,20 @@ from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
 from hellenistic_astrology.core.dignities import MutualReception
 from hellenistic_astrology.core.observation import Observation, PointPosition
+from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod
 from hellenistic_astrology.docgen.builder import (
     MINOR_DIGNITIES_HEADER,
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
+    ZODIACAL_RELEASING_HEADER,
     add_minor_dignities_table,
+    add_zodiacal_releasing_table,
     build_observation_document,
     cluster_aspect_text,
     conjunction_text,
     direction_label,
     format_dms,
+    format_releasing_date,
     mutual_reception_text,
 )
 
@@ -127,6 +133,34 @@ def test_add_minor_dignities_table_uses_dash_for_missing_values():
     assert venus_row == ["Vénus", "—", "—", "—"]
 
 
+def test_format_releasing_date():
+    assert format_releasing_date(datetime(1970, 11, 20)) == "20/11/1970"
+
+
+def test_add_zodiacal_releasing_table_rows_and_peak_marking():
+    # Fortune synthétique en Scorpion : Lion (angulaire, groupe fixe) doit
+    # être marqué culminant, Vierge (non angulaire à Scorpion) ne doit pas
+    # l'être.
+    fortune_sign = "Scorpion"
+    l1 = ReleasingPeriod(
+        level=1, sign="Lion", ruler="Soleil", start=datetime(2000, 1, 1), end=datetime(2019, 1, 1)
+    )
+    l2 = ReleasingPeriod(
+        level=2, sign="Vierge", ruler="Mercure", start=datetime(2000, 1, 1), end=datetime(2001, 8, 1)
+    )
+    chapters = [ReleasingChapter(l1=l1, sub_periods=[l2])]
+    document = Document()
+
+    table = add_zodiacal_releasing_table(document, chapters, fortune_sign)
+
+    header_row = [cell.text for cell in table.rows[0].cells]
+    assert header_row == ZODIACAL_RELEASING_HEADER
+    l1_row = [cell.text for cell in table.rows[1].cells]
+    assert l1_row == ["L1", "Lion", "Soleil", "01/01/2000", "01/01/2019", "Oui"]
+    l2_row = [cell.text for cell in table.rows[2].cells]
+    assert l2_row == ["L2", "Vierge", "Mercure", "01/01/2000", "01/08/2001", "—"]
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -137,9 +171,15 @@ def test_build_observation_document_structure(fixture_name):
     assert [p.text for p in document.paragraphs if p.style.name == "Heading 1"] == [
         "Phase 1 — Observation"
     ]
-    assert len(document.tables) == 3
+    assert len(document.tables) == 5
 
-    positions_table, rulerships_table, minor_dignities_table = document.tables
+    (
+        positions_table,
+        rulerships_table,
+        minor_dignities_table,
+        zr_fortune_table,
+        zr_spirit_table,
+    ) = document.tables
 
     header_row = [cell.text for cell in positions_table.rows[0].cells]
     assert header_row == POSITIONS_HEADER
@@ -204,8 +244,28 @@ def test_build_observation_document_structure(fixture_name):
         )
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
-    assert heading2_texts[-1] == "Aspects par signe relevés"
+    assert heading2_texts[-2:] == [
+        "Libération zodiacale — Part de Fortune",
+        "Libération zodiacale — Part de l'Esprit",
+    ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
+    assert "Aspects par signe relevés" in heading2_texts
+
+    # Recoupe le rendu docgen contre le même calcul core.zodiacal_releasing,
+    # sur la position réellement calculée (pas la fixture, qui ne documente
+    # pas cette technique) : teste le branchement, pas l'exactitude
+    # astrologique déjà couverte par tests/test_zodiacal_releasing.py.
+    for table, chapters in [
+        (zr_fortune_table, observation.zodiacal_releasing_fortune),
+        (zr_spirit_table, observation.zodiacal_releasing_spirit),
+    ]:
+        assert [cell.text for cell in table.rows[0].cells] == ZODIACAL_RELEASING_HEADER
+        expected_row_count = 1 + sum(1 + len(chapter.sub_periods) for chapter in chapters)
+        assert len(table.rows) == expected_row_count
+        first_l1_row = [cell.text for cell in table.rows[1].cells]
+        assert first_l1_row[0] == "L1"
+        assert first_l1_row[1] == chapters[0].l1.sign
+        assert first_l1_row[3] == format_releasing_date(chapters[0].l1.start)
 
     fixture_clusters = [
         SignCluster(sign=c["sign"], house=c["house"], members=tuple(c["members"]))

@@ -111,6 +111,26 @@ def level_periods(level: int, start_sign: str, start: datetime, duration: timede
     return periods
 
 
+@dataclass(frozen=True)
+class ReleasingChapter:
+    """Un chapitre de niveau 1 et ses sous-périodes de niveau 2 — structure
+    imbriquée prête pour un rendu tabulaire (docgen), qui évite d'avoir à
+    regrouper la liste plate de `releasing_tree()` (laquelle place tous les
+    L1 d'abord, puis tous les L2 groupés par parent, pas un ordre entrelacé)."""
+
+    l1: ReleasingPeriod
+    sub_periods: list[ReleasingPeriod]
+
+
+def releasing_chapters(lot_sign: str, birth: datetime, horizon: datetime) -> list[ReleasingChapter]:
+    """Chapitres de niveau 1 (de `birth` à `horizon`, tronqué en pratique
+    comme `level_periods` niveau 1), chacun avec ses sous-périodes de niveau 2."""
+    return [
+        ReleasingChapter(l1=period, sub_periods=sub_periods(period))
+        for period in level_periods(1, lot_sign, birth, horizon - birth)
+    ]
+
+
 def sub_periods(parent: ReleasingPeriod) -> list[ReleasingPeriod]:
     """Périodes du niveau directement inférieur, à l'intérieur de `parent`.
 

@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from docx import Document
 
 from ..core.aspects import ClusterAspect, SignCluster
 from ..core.dignities import MutualReception
 from ..core.observation import Observation, PointPosition
+from ..core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod, is_peak_period
 from . import styles
 
 FEMININE_PLANETS = {"Lune", "Vénus"}
@@ -34,6 +37,9 @@ RULERSHIPS_COLUMN_WIDTHS_DXA = [2400, 3200, 3200]
 
 MINOR_DIGNITIES_HEADER = ["Astre", "Triplicité", "Terme (bornes égyptiennes)", "Décan"]
 MINOR_DIGNITIES_COLUMN_WIDTHS_DXA = [1700, 2900, 2900, 2300]
+
+ZODIACAL_RELEASING_HEADER = ["Niveau", "Signe", "Maître", "Début", "Fin", "Culminante"]
+ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA = [900, 1700, 1700, 1600, 1600, 1400]
 
 
 def format_dms(decimal_degrees: float) -> str:
@@ -109,6 +115,43 @@ def add_minor_dignities_table(document: Document, observation: Observation):
         cells[1].text = planet.triplicity_dignity or "—"
         cells[2].text = planet.bound_dignity or "—"
         cells[3].text = planet.decan_dignity or "—"
+    return table
+
+
+def format_releasing_date(when: datetime) -> str:
+    return when.strftime("%d/%m/%Y")
+
+
+def _zodiacal_releasing_row(
+    table, period: ReleasingPeriod, level_label: str, fortune_sign: str
+) -> None:
+    cells = table.add_row().cells
+    cells[0].text = level_label
+    cells[1].text = period.sign
+    cells[2].text = period.ruler
+    cells[3].text = format_releasing_date(period.start)
+    cells[4].text = format_releasing_date(period.end)
+    # Toujours par rapport à la Part de Fortune, même dans la table de
+    # l'Esprit (confirmé par une source primaire, voir zodiacal_releasing.is_peak_period).
+    cells[5].text = "Oui" if is_peak_period(period, fortune_sign) else "—"
+
+
+def add_zodiacal_releasing_table(
+    document: Document, chapters: list[ReleasingChapter], fortune_sign: str
+):
+    """Table des chapitres (L1) et sous-périodes (L2) de libération
+    zodiacale. `fortune_sign` sert uniquement au marquage des périodes
+    culminantes ; les périodes elles-mêmes sont déjà calculées (Fortune ou
+    Esprit) en amont dans `core.chart`."""
+    table = document.add_table(rows=1, cols=len(ZODIACAL_RELEASING_HEADER))
+    for cell, text in zip(table.rows[0].cells, ZODIACAL_RELEASING_HEADER):
+        styles.set_header_cell(cell, text)
+    styles.style_table(table, ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA)
+
+    for chapter in chapters:
+        _zodiacal_releasing_row(table, chapter.l1, "L1", fortune_sign)
+        for sub in chapter.sub_periods:
+            _zodiacal_releasing_row(table, sub, "L2", fortune_sign)
     return table
 
 
@@ -201,5 +244,12 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Aspects par signe relevés", level=2)
     add_aspects_section(document, observation)
+
+    fortune_sign = observation.part_of_fortune.sign
+    document.add_heading("Libération zodiacale — Part de Fortune", level=2)
+    add_zodiacal_releasing_table(document, observation.zodiacal_releasing_fortune, fortune_sign)
+
+    document.add_heading("Libération zodiacale — Part de l'Esprit", level=2)
+    add_zodiacal_releasing_table(document, observation.zodiacal_releasing_spirit, fortune_sign)
 
     return document

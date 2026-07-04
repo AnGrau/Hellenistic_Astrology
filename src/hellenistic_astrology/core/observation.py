@@ -2,6 +2,7 @@ import json
 from dataclasses import asdict, dataclass, field
 
 from .dignities import MutualReception, Rulership
+from .zodiacal_releasing import ReleasingChapter
 
 
 @dataclass(frozen=True)
@@ -52,12 +53,19 @@ class Observation:
     # (aspects.py importe déjà PointPosition depuis ce module).
     clusters: list = field(default_factory=list)
     cluster_aspects: list = field(default_factory=list)
+    # Libération zodiacale, niveaux L1+L2, de la naissance à un horizon
+    # arbitraire (voir core.chart) — voir core.zodiacal_releasing pour
+    # l'algorithme et docgen.builder pour le rendu.
+    zodiacal_releasing_fortune: list[ReleasingChapter] = field(default_factory=list)
+    zodiacal_releasing_spirit: list[ReleasingChapter] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     def to_json(self, **kwargs) -> str:
-        return json.dumps(self.to_dict(), ensure_ascii=False, **kwargs)
+        # `default=str` : les dates de libération zodiacale (datetime) ne
+        # sont pas sérialisables nativement par json.dumps.
+        return json.dumps(self.to_dict(), ensure_ascii=False, default=str, **kwargs)
 
     def planet(self, name: str) -> PointPosition:
         for p in self.planets:
