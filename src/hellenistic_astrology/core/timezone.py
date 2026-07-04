@@ -10,8 +10,13 @@ MIN_RELIABLE_YEAR = 1916
 @dataclass(frozen=True)
 class BirthData:
     name: str
-    latitude: float
-    longitude: float
+    # latitude/longitude : coordonnées directes, toujours prioritaires si
+    # fournies (aucun appel réseau). place : lieu en texte libre, résolu via
+    # géocodage (core.geocoding) uniquement si latitude/longitude sont absents
+    # — opt-in explicite, voir core/geocoding.py.
+    latitude: float | None = None
+    longitude: float | None = None
+    place: str | None = None
     local_date: date | None = None
     local_time: time | None = None
     tz_name: str | None = None
@@ -19,12 +24,13 @@ class BirthData:
 
 
 def birth_data_from_dict(data: dict) -> BirthData:
-    """Construit un BirthData depuis un dict JSON (name, latitude, longitude,
-    local_date/local_time/tz_name, ou utc_datetime en alternative)."""
+    """Construit un BirthData depuis un dict JSON (name, latitude+longitude
+    ou place, local_date/local_time/tz_name, ou utc_datetime en alternative)."""
     return BirthData(
         name=data["name"],
-        latitude=data["latitude"],
-        longitude=data["longitude"],
+        latitude=data.get("latitude"),
+        longitude=data.get("longitude"),
+        place=data.get("place"),
         local_date=date.fromisoformat(data["local_date"]) if "local_date" in data else None,
         local_time=time.fromisoformat(data["local_time"]) if "local_time" in data else None,
         tz_name=data.get("tz_name"),

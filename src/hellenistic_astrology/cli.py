@@ -6,6 +6,7 @@ import unicodedata
 from pathlib import Path
 
 from .core.chart import build_observation
+from .core.geocoding import GeocodingError
 from .core.timezone import birth_data_from_dict
 from .docgen.builder import build_observation_document
 
@@ -28,7 +29,9 @@ def main(argv: list[str] | None = None) -> int:
         "birth_data_json",
         type=Path,
         help=(
-            "Fichier JSON : name, latitude, longitude, local_date, local_time, tz_name "
+            "Fichier JSON : name, latitude+longitude ou place (lieu en texte libre, résolu "
+            "via géocodage Nominatim/OpenStreetMap — envoie ce texte sur le réseau, à "
+            "n'utiliser qu'en connaissance de cause), local_date, local_time, tz_name "
             "(ou utc_datetime à la place de local_date/local_time/tz_name pour les dates "
             "antérieures à 1916)."
         ),
@@ -46,7 +49,11 @@ def main(argv: list[str] | None = None) -> int:
         data = json.load(f)
 
     birth = birth_data_from_dict(data)
-    observation = build_observation(birth)
+    try:
+        observation = build_observation(birth)
+    except (GeocodingError, ValueError) as exc:
+        print(f"erreur : {exc}", file=sys.stderr)
+        return 1
     document = build_observation_document(observation)
 
     output_path = args.output or Path("output") / f"{slugify(birth.name)}.docx"

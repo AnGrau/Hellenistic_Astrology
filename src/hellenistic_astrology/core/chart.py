@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from . import aspects, dignities, ephemeris, houses, lots, sect
+from . import aspects, dignities, ephemeris, geocoding, houses, lots, sect
 from .observation import Observation, PointPosition
 from .timezone import BirthData, resolve_utc
 
@@ -10,13 +10,12 @@ DEFAULT_EPHE_PATH = str(Path(__file__).resolve().parents[3] / "data" / "ephe")
 def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> Observation:
     utc_dt = resolve_utc(birth)
     jd_ut = ephemeris.julian_day_utc(utc_dt)
+    latitude, longitude = geocoding.resolve_coordinates(birth)
 
     ephemeris.set_ephemeris_path(ephe_path)
     flags = ephemeris.compute_flags(ephe_path)
 
-    ascendant_lon, midheaven_lon = ephemeris.ascendant_midheaven(
-        jd_ut, birth.latitude, birth.longitude
-    )
+    ascendant_lon, midheaven_lon = ephemeris.ascendant_midheaven(jd_ut, latitude, longitude)
     raw_planets = ephemeris.planet_positions(jd_ut, flags)
 
     sun_lon = raw_planets["Soleil"].longitude
