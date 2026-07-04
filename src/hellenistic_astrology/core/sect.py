@@ -1,3 +1,8 @@
+"""Secte de la carte (diurne/nocturne) et rôle de secte par planète
+classique — la position du Soleil détermine la secte, qui à son tour
+détermine les formules des Lots (`lots.py`) et le rôle de chaque planète."""
+
+
 def is_diurnal(sun_house: int) -> bool:
     """Secte de la carte : diurne si le Soleil est au-dessus de l'horizon,
     c'est-à-dire dans les maisons 7 à 12 (en signes entiers)."""

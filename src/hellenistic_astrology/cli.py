@@ -1,3 +1,11 @@
+"""Point d'entrée CLI (`hellenistic-astrology`, voir `pyproject.toml`).
+
+Prend un fichier JSON de données de naissance, calcule l'`Observation`
+(`core.chart.build_observation`) et écrit le `.docx` de Phase 1/2
+(`docgen.builder.build_observation_document`) — voir `README.md` pour le
+schéma JSON attendu et les options disponibles.
+"""
+
 import argparse
 import json
 import re

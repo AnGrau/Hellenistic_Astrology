@@ -1,6 +1,6 @@
 # Hellenistic Astrology
 
-Calcul et mise en forme de thèmes natals en astrologie hellénistique (signes entiers). Voir `CLAUDE.md` pour le contexte complet du projet, les réglages astrologiques et la roadmap.
+Calcul et mise en forme de thèmes natals en astrologie hellénistique (signes entiers). Voir `CLAUDE.md` pour le contexte complet du projet, les réglages astrologiques et la roadmap, et [`docs/HOWTO.md`](docs/HOWTO.md) pour un guide pas à pas (installation → thème → brief → rédaction assistée).
 
 ## Intentions
 

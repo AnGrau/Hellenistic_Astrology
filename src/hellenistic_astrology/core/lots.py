@@ -1,3 +1,8 @@
+"""Lots grecs (Parts) : Fortune, Esprit, Éros. Chaque formule s'inverse
+selon la secte de la carte (diurne/nocturne, voir `sect.py`) — piège
+fréquent explicitement signalé dans `CLAUDE.md`."""
+
+
 def part_of_fortune(ascendant: float, sun: float, moon: float, diurnal: bool) -> float:
     if diurnal:
         return (ascendant + moon - sun) % 360

@@ -1,3 +1,8 @@
+"""Point d'entrée du calcul astrologique : `build_observation` orchestre
+tous les modules de `core` (positions, maisons, secte, dignités, aspects,
+Lots, Nœuds, éclipse, lunaison, libération zodiacale) et renvoie l'objet
+`Observation` unique consommé par `docgen` et `interpretation`."""
+
 from datetime import timedelta
 from pathlib import Path
 

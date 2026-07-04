@@ -1,3 +1,7 @@
+"""Configuration d'éclipse à la naissance : la Lune proche d'un Nœud *et*
+proche de la syzygie Soleil-Lune correspondante, aux seuils astronomiques
+standard d'éclipse partielle (voir `eclipse_configuration`)."""
+
 from dataclasses import dataclass
 
 # Limites astronomiques standard d'éclipse partielle (Soleil ou Lune à moins

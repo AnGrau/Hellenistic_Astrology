@@ -1,3 +1,9 @@
+"""Interface avec le Swiss Ephemeris (`pyswisseph`) : positions planétaires,
+Ascendant/Milieu du Ciel, Nœud Nord. Bascule automatiquement sur la théorie
+Moshier/Moseph (précision ~1 arcseconde) si les fichiers `.se1` de
+`data/ephe/` (voir `scripts/fetch_ephemeris.py`) sont absents.
+"""
+
 import os
 from dataclasses import dataclass
 from datetime import datetime

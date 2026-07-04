@@ -1,3 +1,11 @@
+"""Signes du zodiaque, maisons en signes entiers (Whole Sign) et modalité.
+
+`whole_sign_house` implémente la seule règle de maison utilisée dans ce
+projet (non négociable, voir `CLAUDE.md`) : la maison 1 est le signe de
+l'Ascendant, chaque signe suivant compte pour une maison, quel que soit
+son degré.
+"""
+
 SIGNS = [
     "Bélier",
     "Taureau",

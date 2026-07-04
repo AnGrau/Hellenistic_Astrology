@@ -1,3 +1,7 @@
+"""Aspects ptoléméens par signe : regroupement des points en amas
+(`SignCluster`) par signe, aspect entre chaque paire d'amas, et la règle
+des 3° hors-signe (`out_of_sign_conjunction`) pour les cas limites."""
+
 from dataclasses import dataclass
 
 from .houses import index_of_sign, longitude_of

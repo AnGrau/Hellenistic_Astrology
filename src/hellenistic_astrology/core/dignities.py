@@ -1,3 +1,8 @@
+"""Dignités essentielles (domicile/exaltation/exil/chute/pérégrin),
+maîtrises traditionnelles, dignités mineures (triplicité, bornes
+égyptiennes, décans), réceptions mutuelles et combustion (« sous les
+rayons »)."""
+
 from dataclasses import dataclass
 
 from .houses import SIGNS, index_of_sign, whole_sign_house

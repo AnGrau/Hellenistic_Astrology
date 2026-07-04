@@ -1,3 +1,9 @@
+"""Rendu de la Phase 1 (Observation) et de la Phase 2 (Fiche technique) en
+`.docx` — `build_observation_document` est le point d'entrée ; chaque
+`add_*_section`/`add_*_table` correspond à une (sous-)section du document
+final et ne fait que mettre en forme des faits déjà présents sur
+l'`Observation` fournie."""
+
 from datetime import datetime
 
 from docx import Document

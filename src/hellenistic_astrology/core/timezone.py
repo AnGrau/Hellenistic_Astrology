@@ -1,3 +1,7 @@
+"""Données de naissance (`BirthData`) et résolution en UTC. Fuseau résolu
+automatiquement (place + heure locale via `zoneinfo`) à partir de 1916 ;
+avant cette date, un `utc_datetime` explicite est obligatoire."""
+
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo

@@ -1,3 +1,8 @@
+"""Libération zodiacale (Vettius Valens) : niveaux L1-L4, périodes
+culminantes, relâchement du lien. Structure auto-similaire — voir
+`level_periods` (le cœur de l'algorithme, réutilisé par `sub_periods` et
+`releasing_tree` à chaque niveau)."""
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 

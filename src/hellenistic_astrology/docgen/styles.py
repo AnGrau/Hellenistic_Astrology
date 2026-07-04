@@ -1,3 +1,6 @@
+"""Mise en forme des tableaux `python-docx` (en-têtes, largeurs de
+colonnes, ombrage) — utilisé par `builder.py`, purement visuel."""
+
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, Twips

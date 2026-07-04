@@ -1,3 +1,6 @@
+"""Phase de lunaison natale (Dane Rudhyar, 8 phases) — voir `eclipse.py`
+pour la configuration d'éclipse, qui réutilise le même écart Soleil-Lune."""
+
 from dataclasses import dataclass
 
 # Huit phases de lunaison (Dane Rudhyar, "The Lunation Cycle", 1967) : l'écart

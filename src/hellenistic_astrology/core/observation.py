@@ -1,3 +1,7 @@
+"""`PointPosition` et `Observation` : la structure de données unique qui
+porte tous les faits calculés par `core` (Phase 1/2) et que consomment
+`docgen` et `interpretation`. Frontière explicite entre calcul et rendu."""
+
 import json
 from dataclasses import asdict, dataclass, field
 
