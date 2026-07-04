@@ -146,13 +146,16 @@ def test_format_releasing_date():
 def test_add_zodiacal_releasing_table_rows_and_peak_marking():
     # Fortune synthétique en Scorpion : Lion (angulaire, groupe fixe) doit
     # être marqué culminant, Vierge (non angulaire à Scorpion) ne doit pas
-    # l'être.
+    # l'être. Vierge est aussi marquée comme un relâchement du lien pour
+    # tester le rendu de la nouvelle colonne (Lion, non issu d'un saut, sert
+    # de cas négatif).
     fortune_sign = "Scorpion"
     l1 = ReleasingPeriod(
         level=1, sign="Lion", ruler="Soleil", start=datetime(2000, 1, 1), end=datetime(2019, 1, 1)
     )
     l2 = ReleasingPeriod(
-        level=2, sign="Vierge", ruler="Mercure", start=datetime(2000, 1, 1), end=datetime(2001, 8, 1)
+        level=2, sign="Vierge", ruler="Mercure", start=datetime(2000, 1, 1), end=datetime(2001, 8, 1),
+        bond_loosed=True,
     )
     chapters = [ReleasingChapter(l1=l1, sub_periods=[l2])]
     document = Document()
@@ -162,9 +165,9 @@ def test_add_zodiacal_releasing_table_rows_and_peak_marking():
     header_row = [cell.text for cell in table.rows[0].cells]
     assert header_row == ZODIACAL_RELEASING_HEADER
     l1_row = [cell.text for cell in table.rows[1].cells]
-    assert l1_row == ["L1", "Lion", "Soleil", "01/01/2000", "01/01/2019", "Oui"]
+    assert l1_row == ["L1", "Lion", "Soleil", "01/01/2000", "01/01/2019", "Oui", "—"]
     l2_row = [cell.text for cell in table.rows[2].cells]
-    assert l2_row == ["L2", "Vierge", "Mercure", "01/01/2000", "01/08/2001", "—"]
+    assert l2_row == ["L2", "Vierge", "Mercure", "01/01/2000", "01/08/2001", "—", "Oui"]
 
 
 def test_add_elemental_modal_and_angularity_sections_synthetic():

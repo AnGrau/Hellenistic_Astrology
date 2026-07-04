@@ -39,8 +39,10 @@ RULERSHIPS_COLUMN_WIDTHS_DXA = [2400, 3200, 3200]
 MINOR_DIGNITIES_HEADER = ["Astre", "Triplicité", "Terme (bornes égyptiennes)", "Décan"]
 MINOR_DIGNITIES_COLUMN_WIDTHS_DXA = [1700, 2900, 2900, 2300]
 
-ZODIACAL_RELEASING_HEADER = ["Niveau", "Signe", "Maître", "Début", "Fin", "Culminante"]
-ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA = [900, 1700, 1700, 1600, 1600, 1400]
+ZODIACAL_RELEASING_HEADER = [
+    "Niveau", "Signe", "Maître", "Début", "Fin", "Culminante", "Relâchement du lien",
+]
+ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA = [900, 1600, 1600, 1500, 1500, 1300, 1800]
 
 # Ordre confirmé par les deux documents de référence (Pérégrin traité à part,
 # voir add_dignities_and_receptions_section) ; Domicile jamais illustré dans
@@ -163,6 +165,10 @@ def _zodiacal_releasing_row(
     # Toujours par rapport à la Part de Fortune, même dans la table de
     # l'Esprit (confirmé par une source primaire, voir zodiacal_releasing.is_peak_period).
     cells[5].text = "Oui" if is_peak_period(period, fortune_sign) else "—"
+    # Période immédiatement issue d'un relâchement du lien ("loosing of the
+    # bond", jalon 23) : `period.bond_loosed` est déjà calculé par
+    # `zodiacal_releasing.level_periods`, pas de logique de rendu ici.
+    cells[6].text = "Oui" if period.bond_loosed else "—"
 
 
 def add_zodiacal_releasing_table(
