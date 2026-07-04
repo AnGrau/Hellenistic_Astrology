@@ -13,6 +13,10 @@ class PointPosition:
     retrograde: bool | None = None
     essential_dignity: str | None = None
     sect_role: str | None = None
+    # Vitesse écliptique signée (°/jour), renseignée uniquement pour les
+    # planètes classiques : nécessaire à la règle des 3° hors-signe
+    # (core.aspects). None pour l'Ascendant, le MC et les Lots.
+    speed: float | None = None
 
 
 @dataclass(frozen=True)
@@ -31,6 +35,11 @@ class Observation:
     part_of_fortune: PointPosition | None = None
     part_of_spirit: PointPosition | None = None
     rulerships: list[Rulership] = field(default_factory=list)
+    # Types concrets définis dans core.aspects (SignCluster, ClusterAspect) ;
+    # pas d'import direct ici pour éviter une dépendance circulaire
+    # (aspects.py importe déjà PointPosition depuis ce module).
+    clusters: list = field(default_factory=list)
+    cluster_aspects: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

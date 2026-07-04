@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from . import dignities, ephemeris, houses, lots, sect
+from . import aspects, dignities, ephemeris, houses, lots, sect
 from .observation import Observation, PointPosition
 from .timezone import BirthData, resolve_utc
 
@@ -30,6 +30,7 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         retrograde: bool | None = None,
         essential_dignity: str | None = None,
         sect_role: str | None = None,
+        speed: float | None = None,
     ) -> PointPosition:
         return PointPosition(
             name=name,
@@ -39,6 +40,7 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
             retrograde=retrograde,
             essential_dignity=essential_dignity,
             sect_role=sect_role,
+            speed=speed,
         )
 
     ascendant = make_point("Ascendant", ascendant_lon)
@@ -50,12 +52,19 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
             retrograde=raw.retrograde,
             essential_dignity=dignities.essential_dignity(name, houses.sign_name(raw.longitude)),
             sect_role=sect.sect_role(name, diurnal),
+            speed=raw.speed,
         )
         for name, raw in raw_planets.items()
     ]
 
     fortune_lon = lots.part_of_fortune(ascendant_lon, sun_lon, moon_lon, diurnal)
     spirit_lon = lots.part_of_spirit(ascendant_lon, sun_lon, moon_lon, diurnal)
+    part_of_fortune = make_point("Part de Fortune", fortune_lon)
+    part_of_spirit = make_point("Part de l'Esprit", spirit_lon)
+
+    all_points = [ascendant, *planets, midheaven, part_of_fortune, part_of_spirit]
+    clusters = aspects.build_clusters(all_points)
+    cluster_aspects = aspects.compute_cluster_aspects(clusters, all_points)
 
     return Observation(
         name=birth.name,
@@ -63,7 +72,9 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         ascendant=ascendant,
         midheaven=midheaven,
         planets=planets,
-        part_of_fortune=make_point("Part de Fortune", fortune_lon),
-        part_of_spirit=make_point("Part de l'Esprit", spirit_lon),
+        part_of_fortune=part_of_fortune,
+        part_of_spirit=part_of_spirit,
         rulerships=dignities.traditional_rulerships(ascendant_lon),
+        clusters=clusters,
+        cluster_aspects=cluster_aspects,
     )

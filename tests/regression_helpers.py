@@ -63,6 +63,29 @@ def assert_rulerships_match(observation: Observation, fixture: dict) -> None:
         )
 
 
+def assert_clusters_match(observation: Observation, fixture: dict) -> None:
+    actual = [
+        {"sign": c.sign, "house": c.house, "members": list(c.members)}
+        for c in observation.clusters
+    ]
+    assert actual == fixture["clusters"], f"amas {actual} != {fixture['clusters']}"
+
+
+def assert_cluster_aspects_match(observation: Observation, fixture: dict) -> None:
+    actual = [
+        {
+            "sign_a": a.sign_a,
+            "sign_b": a.sign_b,
+            "aspect": a.aspect,
+            "boundary_exception": a.boundary_exception,
+        }
+        for a in observation.cluster_aspects
+    ]
+    assert actual == fixture["cluster_aspects"], (
+        f"aspects entre amas {actual} != {fixture['cluster_aspects']}"
+    )
+
+
 def assert_observation_matches(observation: Observation, fixture: dict) -> None:
     assert observation.sect == fixture["sect"], (
         f"secte {observation.sect} != {fixture['sect']}"
@@ -74,3 +97,5 @@ def assert_observation_matches(observation: Observation, fixture: dict) -> None:
     assert_point_matches(observation.part_of_fortune, fixture["part_of_fortune"], "Part de Fortune")
     assert_point_matches(observation.part_of_spirit, fixture["part_of_spirit"], "Part de l'Esprit")
     assert_rulerships_match(observation, fixture)
+    assert_clusters_match(observation, fixture)
+    assert_cluster_aspects_match(observation, fixture)
