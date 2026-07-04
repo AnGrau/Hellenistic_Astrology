@@ -62,8 +62,25 @@ Ces URLs pointent vers les pages officielles (éditeur ou auteur/autrice). Si le
   - Validé par `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py` en plus des tests de régression.
 - **Jalon 3 (terminé)** : `core/aspects.py` — regroupement des points en amas par signe, aspect ptoléméen par signe entre chaque paire d'amas, règle des 3° hors-signe basée sur la proximité écliptique réelle. Les 31 relations d'amas des deux thèmes (10 pour Anthony, 21 pour Liam) ont été vérifiées à la main contre le texte "Aspects par signe relevés" des documents de référence. Validé par `tests/test_aspects.py` et les tests de régression étendus.
   - **Limite connue** : aucun des deux thèmes de référence ne déclenche la règle des 3° (les deux documents confirment explicitement qu'elle ne s'active pas) — le cas positif n'est couvert que par un test synthétique, sans validation sur données réelles. À surveiller si un futur thème la déclenche.
-  - Rendu textuel des aspects (puces façon "X et Y conjoints en...", commentaires interprétatifs) volontairement hors périmètre : c'est une tâche de rédaction, pas de calcul ni de mise en forme mécanique — docgen n'a pas été touché par ce jalon.
-- **Jalons suivants** : dignités essentielles plus fines (bornes/triplicité si besoin), libération zodiacale, rendu textuel des aspects, puis Skill Claude (`skills/hellenistic-astrology/SKILL.md`), MCP uniquement si un besoin réel émerge.
+- **Jalon 4 (terminé)** : `docgen/builder.py` génère la section "Aspects par signe relevés" en puces factuelles — une puce de conjonction par amas (accord grammatical masculin/féminin selon les membres), puis une puce par paire d'amas pour chaque relation d'aspect, aversions incluses. Format volontairement plus simple et déterministe que la prose des deux documents de référence, qui divergeaient stylistiquement entre eux sur ce point. Commentaire interprétatif (significations de maîtrise, etc.) toujours hors périmètre de docgen.
+- Voir la section **Reste à faire** ci-dessous pour la suite.
+
+## Reste à faire
+
+Roadmap explicite, dans l'ordre de priorité recommandé. Chaque jalon reste à valider avec l'utilisateur avant d'être attaqué (voir garde-fous ci-dessous) ; l'ordre ci-dessous est une recommandation, pas un engagement figé.
+
+1. **CLI / point d'entrée réel** — aujourd'hui, traiter un nouveau client nécessite d'écrire du Python à la main (`BirthData(...)`) ; `main.py` est toujours le scaffold `uv` par défaut, jamais branché sur le pipeline. Sans ça, l'outil ne sert que pour Anthony et Liam. Priorité haute : c'est ce qui rend le pipeline réellement utilisable.
+2. **Nœud Nord/Sud et Part d'Éros** — présents dans les deux documents de référence (tableau des positions et puces d'aspects) mais jamais calculés ; leur absence est actuellement une omission assumée, pas un choix définitif. Complète le tableau des positions et enrichit les amas/aspects.
+3. **Réceptions mutuelles** — concept observé dans le texte de référence d'Anthony ("réception mutuelle par domicile entre Mars et Vénus") mais jamais implémenté ni discuté comme un item à part entière ; fait partie du relevé factuel de dignités de la Phase 1.
+4. **Vérification automatique des URLs bibliographiques** (`scripts/check_bibliography.py`) — décidée lors de la phase de planification initiale (requête HTTP HEAD sur les 4 URLs avant génération) mais jamais implémentée.
+5. **Dignités essentielles plus fines** (bornes égyptiennes, triplicités par secte, décans) — marqué "si besoin" dès l'origine, le moins prioritaire des calculs restants.
+6. **Libération zodiacale** — technique de repères temporels citée dans l'objectif initial et dans la section optionnelle de la Phase 3.
+7. **Phase 2 — Fiche technique** (répartition élémentaire/modale, angularité, Ascendant et son maître, luminaires, dignités et réceptions, nœuds et Parts, structure du thème) — mélange tableau (élémentaire/modale, déjà vu dans les références) et texte descriptif. Premier vrai changement de nature par rapport aux jalons précédents : ce n'est plus seulement de la mise en forme mécanique de données calculées.
+8. **Phase 3 — Interprétation** (synthèse, nuances de secte/dignité, section optionnelle libération zodiacale) — rédaction pure destinée au client. À ce stade, `docgen` au sens actuel (mise en forme déterministe d'un objet `Observation`) atteint sa limite : c'est une tâche de génération de texte assistée, probablement un prompt structuré plutôt que du code Python déterministe — à repenser en phase de planification dédiée plutôt que de trancher seul.
+9. **`docgen/CLAUDE.md` scopé** — évoqué à deux reprises sans être tranché ; le bon moment est l'attaque de l'item 7 ou 8, puisque c'est le changement de nature de tâche (texte vs données) qui justifierait un fichier séparé.
+10. **Skill Claude** (`skills/hellenistic-astrology/SKILL.md`) — wrapper fin autour du CLI (item 1), idéalement après que les Phases 2/3 existent au moins partiellement.
+11. **Docker** — prévu, explicitement conditionné à l'existence d'un point d'entrée réel (item 1) ; pas avant.
+12. **MCP** — uniquement si un besoin réel émerge d'un usage via Claude Desktop ou similaire ; non engagé.
 
 ## Cas de test de référence (vérité terrain)
 
@@ -81,4 +98,4 @@ Tout module de calcul (positions, maisons, secte, dignités, Lots, aspects) doit
 - Ne pas modifier les réglages astrologiques listés ci-dessus (ce sont des choix méthodologiques assumés par l'utilisateur, pas des paramètres à optimiser).
 - Ne pas remplacer les livres de référence ni en ajouter d'autres sans demande explicite.
 - Ne pas publier ou committer de données personnelles de tiers (dates de naissance, lieux) au-delà des deux cas de test ci-dessus, qui ont déjà été partagés volontairement par l'utilisateur — et même pour ces deux cas, ne jamais retirer `/References`, `/tests/fixtures` ou `/output` du `.gitignore` sans demande explicite.
-- Ne pas choisir seul les jalons suivants (rendu textuel des aspects, libération zodiacale, Skill, MCP) sans validation explicite, même si la trajectoire générale est déjà actée ci-dessus.
+- Ne pas choisir seul l'ordre ou le périmètre des items listés dans "Reste à faire" sans validation explicite — la priorisation proposée est une recommandation, pas un mandat. En particulier, ne pas décider seul de l'approche pour les Phases 2/3 (item 8) : c'est un changement de nature de tâche qui mérite sa propre discussion de planification.
