@@ -29,30 +29,62 @@ def test_render_chart_wheel_on_reference_charts(fixture_name):
     assert len(png) > 0
 
 
+def _wheel_label_and_marker_boxes(fig):
+    """Bounding box (pixels) de chaque étiquette de texte et de chaque
+    marqueur de point (`ax.plot(..., "o", gid="point:<nom>")`), avec le
+    `gid` associé quand il existe — un marqueur et sa propre étiquette
+    partagent le même `gid` (voir `render_chart_wheel`) et sont donc
+    attendus proches l'un de l'autre, pas un vrai chevauchement."""
+    ax = fig.axes[0]
+    renderer = fig.canvas.get_renderer()
+    boxes = [(text.get_gid(), text.get_window_extent(renderer=renderer)) for text in ax.texts]
+    boxes += [
+        (line.get_gid(), line.get_window_extent(renderer=renderer))
+        for line in ax.lines
+        if line.get_gid() and line.get_gid().startswith("point:")
+    ]
+    return boxes
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_render_chart_wheel_labels_do_not_overlap(fixture_name):
     # Détection de chevauchement par bounding box (matplotlib), pas une
     # comparaison pixel par pixel : vérifie que les numéros de maison, les
-    # glyphes de signe/point et les étiquettes d'angle (AC/DC/MC/IC) ne se
-    # recouvrent jamais entre eux, sur la figure réellement dessinée par
+    # glyphes de signe/point (marqueur ET étiquette), et les étiquettes
+    # d'angle (AC/DC/MC/IC) ne se recouvrent jamais entre eux — sauf le
+    # marqueur d'un point et sa propre étiquette, attendus proches par
+    # construction (même `gid`) — sur la figure réellement dessinée par
     # `_build_chart_wheel_figure` (pas une réimplémentation séparée).
     fixture = load_fixture(fixture_name)
     observation = build_observation(birth_data_from_fixture(fixture))
 
     fig = chart_image._build_chart_wheel_figure(observation)
     fig.canvas.draw()
-    renderer = fig.canvas.get_renderer()
-    boxes = [text.get_window_extent(renderer=renderer) for text in fig.axes[0].texts]
+    boxes = _wheel_label_and_marker_boxes(fig)
 
     overlaps = [
         (i, j)
         for i in range(len(boxes))
         for j in range(i + 1, len(boxes))
-        if boxes[i].overlaps(boxes[j])
+        if boxes[i][1].overlaps(boxes[j][1]) and not (boxes[i][0] and boxes[i][0] == boxes[j][0])
     ]
     plt.close(fig)
 
     assert overlaps == []
+
+
+@pytest.mark.parametrize("member_count", range(1, 7))
+def test_cluster_point_radii_stays_above_aspect_hub(member_count):
+    # Un amas resserré (jalon 36 : la Part de Fortune d'Anthony, 4e membre
+    # du même signe, apparaissait visuellement à l'intérieur du diagramme
+    # d'aspects) ne doit jamais placer un membre sous l'anneau d'aspect,
+    # quel que soit le nombre de membres.
+    radii, _ = chart_image._cluster_point_radii(member_count)
+
+    assert len(radii) == member_count
+    assert radii[0] == chart_image._POINT_BASE_RADIUS
+    assert all(r > chart_image._ASPECT_HUB_RADIUS for r in radii)
+    assert radii == sorted(radii, reverse=True)
 
 
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])

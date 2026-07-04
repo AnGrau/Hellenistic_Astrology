@@ -64,10 +64,56 @@ _ASPECT_COLORS = {
 }
 
 _SIGN_RING_INNER = 0.78
-_HOUSE_NUMBER_RADIUS = 0.735
-_ASPECT_HUB_RADIUS = 0.35
-_POINT_BASE_RADIUS = 0.58
-_POINT_RADIUS_STEP = 0.09
+_HOUSE_NUMBER_RADIUS = 0.745
+_ASPECT_HUB_RADIUS = 0.25
+_POINT_BASE_RADIUS = 0.60
+# Rayon le plus bas qu'un amas peut atteindre en s'étageant (jalon 36) :
+# garde une marge sûre au-dessus de l'anneau d'aspect ci-dessus, quel que
+# soit le nombre de membres.
+_POINT_INNER_FLOOR = 0.28
+# Pas radial et décalage d'étiquette calibrés en mesurant directement (pas
+# devinés) la largeur/hauteur réelle des étiquettes les plus larges
+# (`_POINT_LABEL_OFFSET`/`_POINT_RADIUS_STEP` pour "Fort."/"Esp."/"Éros" en
+# police normale, `..._CROWDED` pour la police resserrée) via
+# `Text.get_window_extent` — le chevauchement entre le marqueur d'un membre
+# et l'étiquette du suivant dépend de la LARGEUR du texte, pas seulement de
+# sa hauteur, dès que l'amas ne tombe pas exactement sur l'axe vertical du
+# repère (voir jalon 36 pour le détail du calcul).
+_POINT_RADIUS_STEP = 0.14
+_POINT_LABEL_OFFSET = 0.05
+_POINT_LABEL_OFFSET_CROWDED = 0.03
+_POINT_FONTSIZE_GLYPH = 12
+_POINT_FONTSIZE_LOT = 8
+_POINT_FONTSIZE_GLYPH_CROWDED = 8
+_POINT_FONTSIZE_LOT_CROWDED = 6
+
+
+def _cluster_point_radii(member_count: int) -> tuple[list[float], bool]:
+    """Rayons radiaux pour les membres d'un même amas, du plus externe
+    (premier membre) au plus interne, plus un indicateur "crowded" (amas
+    resserré : police et décalage d'étiquette réduits, voir
+    `render_chart_wheel`).
+
+    Le pas `_POINT_RADIUS_STEP` s'applique tel quel tant que l'amas tient
+    dans la bande [`_POINT_BASE_RADIUS`, `_POINT_INNER_FLOOR`] ; au-delà (ex.
+    un amas à 4 membres ou plus, déjà observé sur le thème d'Anthony —
+    Soleil/Vénus/Jupiter/Part de Fortune en Scorpion), le pas se resserre
+    pour ne jamais descendre sous `_POINT_INNER_FLOOR` — ce qui, sans cette
+    compression, faisait apparaître le membre le plus interne (la Part de
+    Fortune, dans ce cas précis) visuellement à l'intérieur du diagramme
+    d'aspects, corrigé au jalon 36 après un retour utilisateur direct sur le
+    document généré."""
+    if member_count <= 1:
+        return [_POINT_BASE_RADIUS], False
+
+    natural_span = _POINT_RADIUS_STEP * (member_count - 1)
+    if _POINT_BASE_RADIUS - natural_span >= _POINT_INNER_FLOOR:
+        step = _POINT_RADIUS_STEP
+        crowded = False
+    else:
+        step = (_POINT_BASE_RADIUS - _POINT_INNER_FLOOR) / (member_count - 1)
+        crowded = True
+    return [_POINT_BASE_RADIUS - idx * step for idx in range(member_count)], crowded
 
 
 def _figure_to_png_bytes(fig) -> bytes:
@@ -151,19 +197,33 @@ def _build_chart_wheel_figure(observation: Observation):
 
     # Points, groupés par amas pour étager le rayon et éviter le
     # chevauchement des glyphes (les membres d'un même amas partagent un
-    # signe donc des longitudes proches).
+    # signe donc des longitudes proches — parfois à moins d'un degré
+    # d'écart réel, voir `_cluster_point_radii`). Chaque marqueur et son
+    # étiquette partagent un `gid` (`point:<nom>`) : uniquement pour que
+    # les tests de non-chevauchement (jalon 36) puissent distinguer un
+    # marqueur et sa propre étiquette (attendus proches l'un de l'autre)
+    # d'un chevauchement avec un point différent (un vrai défaut visuel).
     points_by_name = {p.name: p for p in observation.all_points}
     excluded_from_dots = {"Ascendant", "Milieu du Ciel"}
     for cluster in observation.clusters:
         members = [m for m in cluster.members if m not in excluded_from_dots]
+        radii, crowded = _cluster_point_radii(len(members))
+        label_offset = _POINT_LABEL_OFFSET_CROWDED if crowded else _POINT_LABEL_OFFSET
         for idx, name in enumerate(members):
             point = points_by_name[name]
             theta = _wheel_theta(longitude_of(point.sign, point.degree_in_sign), ascendant_longitude)
-            radius = _POINT_BASE_RADIUS - idx * _POINT_RADIUS_STEP
+            radius = radii[idx]
             label = POINT_GLYPHS.get(name) or POINT_LABELS.get(name, name[:4])
-            fontsize = 12 if name in POINT_GLYPHS else 8
-            ax.plot(theta, radius, "o", color="#2E3B4E", markersize=4)
-            ax.text(theta, radius + 0.06, label, ha="center", va="center", fontsize=fontsize, color="#2E3B4E")
+            is_glyph = name in POINT_GLYPHS
+            if crowded:
+                fontsize = _POINT_FONTSIZE_GLYPH_CROWDED if is_glyph else _POINT_FONTSIZE_LOT_CROWDED
+            else:
+                fontsize = _POINT_FONTSIZE_GLYPH if is_glyph else _POINT_FONTSIZE_LOT
+            ax.plot(theta, radius, "o", color="#2E3B4E", markersize=4, gid=f"point:{name}")
+            ax.text(
+                theta, radius + label_offset, label, ha="center", va="center",
+                fontsize=fontsize, color="#2E3B4E", gid=f"point:{name}",
+            )
 
     # Les quatre angles : Ascendant/Descendant et Milieu du Ciel/Fond du
     # Ciel sont chacun deux points diamétralement opposés (+180° de
