@@ -1,0 +1,82 @@
+import pytest
+
+from hellenistic_astrology.core.chart import build_observation
+from hellenistic_astrology.docgen.builder import (
+    POSITIONS_HEADER,
+    RULERSHIPS_HEADER,
+    build_observation_document,
+    direction_label,
+    format_dms,
+)
+
+from .regression_helpers import birth_data_from_fixture, load_fixture
+
+
+@pytest.mark.parametrize(
+    "decimal_degrees, expected",
+    [
+        (28.1833, "28°11'"),
+        (0.2167, "0°13'"),
+        (19.9833, "19°59'"),
+        (27.9999, "28°00'"),  # ne doit jamais produire "27°60'"
+    ],
+)
+def test_format_dms(decimal_degrees, expected):
+    assert format_dms(decimal_degrees) == expected
+
+
+def test_direction_label_gender_agreement():
+    assert direction_label("Soleil", False) == "Direct"
+    assert direction_label("Lune", False) == "Directe"
+    assert direction_label("Vénus", True) == "Rétrograde"
+    assert direction_label("Mars", True) == "Rétrograde"
+    assert direction_label("Ascendant", None) == "—"
+
+
+@pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
+def test_build_observation_document_structure(fixture_name):
+    fixture = load_fixture(fixture_name)
+    observation = build_observation(birth_data_from_fixture(fixture))
+
+    document = build_observation_document(observation)
+
+    assert [p.text for p in document.paragraphs if p.style.name == "Heading 1"] == [
+        "Phase 1 — Observation"
+    ]
+    assert len(document.tables) == 2
+
+    positions_table, rulerships_table = document.tables
+
+    header_row = [cell.text for cell in positions_table.rows[0].cells]
+    assert header_row == POSITIONS_HEADER
+    # Ascendant + 7 planètes classiques + MC + Fortune + Esprit.
+    assert len(positions_table.rows) == 1 + 1 + 7 + 1 + 2
+
+    ascendant_row = [cell.text for cell in positions_table.rows[1].cells]
+    assert ascendant_row[0] == "Ascendant"
+    assert ascendant_row[1] == fixture["ascendant"]["sign"]
+    assert ascendant_row[3] == str(fixture["ascendant"]["house"])
+
+    sun_row = next(
+        [cell.text for cell in row.cells]
+        for row in positions_table.rows
+        if row.cells[0].text == "Soleil"
+    )
+    expected_sun = fixture["planets"]["Soleil"]
+    assert sun_row[1] == expected_sun["sign"]
+    assert sun_row[3] == str(expected_sun["house"])
+    assert sun_row[4] == expected_sun["sect_role"]
+    assert sun_row[6] == expected_sun["essential_dignity"]
+
+    ruler_header = [cell.text for cell in rulerships_table.rows[0].cells]
+    assert ruler_header == RULERSHIPS_HEADER
+    assert len(rulerships_table.rows) == 1 + 7
+
+    mercury_row = next(
+        [cell.text for cell in row.cells]
+        for row in rulerships_table.rows
+        if row.cells[0].text == "Mercure"
+    )
+    expected_mercury = fixture["rulerships"]["Mercure"]
+    assert mercury_row[1] == ", ".join(expected_mercury["domicile_signs"])
+    assert mercury_row[2] == ", ".join(str(h) for h in expected_mercury["houses_governed"])

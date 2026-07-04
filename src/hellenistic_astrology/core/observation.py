@@ -1,6 +1,8 @@
 import json
 from dataclasses import asdict, dataclass, field
 
+from .dignities import Rulership
+
 
 @dataclass(frozen=True)
 class PointPosition:
@@ -9,6 +11,8 @@ class PointPosition:
     degree_in_sign: float
     house: int
     retrograde: bool | None = None
+    essential_dignity: str | None = None
+    sect_role: str | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,7 @@ class Observation:
     planets: list[PointPosition] = field(default_factory=list)
     part_of_fortune: PointPosition | None = None
     part_of_spirit: PointPosition | None = None
+    rulerships: list[Rulership] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

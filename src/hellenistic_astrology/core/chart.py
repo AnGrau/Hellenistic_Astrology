@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from . import ephemeris, houses, lots, sect
+from . import dignities, ephemeris, houses, lots, sect
 from .observation import Observation, PointPosition
 from .timezone import BirthData, resolve_utc
 
@@ -19,27 +19,41 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
     )
     raw_planets = ephemeris.planet_positions(jd_ut, flags)
 
-    def make_point(name: str, longitude: float, retrograde: bool | None = None) -> PointPosition:
+    sun_lon = raw_planets["Soleil"].longitude
+    moon_lon = raw_planets["Lune"].longitude
+    sun_house = houses.whole_sign_house(sun_lon, ascendant_lon)
+    diurnal = sect.is_diurnal(sun_house)
+
+    def make_point(
+        name: str,
+        longitude: float,
+        retrograde: bool | None = None,
+        essential_dignity: str | None = None,
+        sect_role: str | None = None,
+    ) -> PointPosition:
         return PointPosition(
             name=name,
             sign=houses.sign_name(longitude),
             degree_in_sign=houses.degree_in_sign(longitude),
             house=houses.whole_sign_house(longitude, ascendant_lon),
             retrograde=retrograde,
+            essential_dignity=essential_dignity,
+            sect_role=sect_role,
         )
 
     ascendant = make_point("Ascendant", ascendant_lon)
     midheaven = make_point("Milieu du Ciel", midheaven_lon)
     planets = [
-        make_point(name, raw.longitude, raw.retrograde)
+        make_point(
+            name,
+            raw.longitude,
+            retrograde=raw.retrograde,
+            essential_dignity=dignities.essential_dignity(name, houses.sign_name(raw.longitude)),
+            sect_role=sect.sect_role(name, diurnal),
+        )
         for name, raw in raw_planets.items()
     ]
 
-    sun_house = next(p.house for p in planets if p.name == "Soleil")
-    diurnal = sect.is_diurnal(sun_house)
-
-    sun_lon = raw_planets["Soleil"].longitude
-    moon_lon = raw_planets["Lune"].longitude
     fortune_lon = lots.part_of_fortune(ascendant_lon, sun_lon, moon_lon, diurnal)
     spirit_lon = lots.part_of_spirit(ascendant_lon, sun_lon, moon_lon, diurnal)
 
@@ -51,4 +65,5 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         planets=planets,
         part_of_fortune=make_point("Part de Fortune", fortune_lon),
         part_of_spirit=make_point("Part de l'Esprit", spirit_lon),
+        rulerships=dignities.traditional_rulerships(ascendant_lon),
     )

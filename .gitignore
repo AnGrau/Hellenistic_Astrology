@@ -16,3 +16,4 @@ data/ephe/*.se1
 # jamais poussées sur GitHub. Le code des tests reste versionné.
 /tests/fixtures/
 /References/
+/output/

@@ -41,6 +41,26 @@ def assert_point_matches(actual: PointPosition, expected: dict, label: str) -> N
         assert actual.retrograde == expected["retrograde"], (
             f"{label} : rétrograde {actual.retrograde} != {expected['retrograde']}"
         )
+    if "essential_dignity" in expected:
+        assert actual.essential_dignity == expected["essential_dignity"], (
+            f"{label} : dignité {actual.essential_dignity} != {expected['essential_dignity']}"
+        )
+    if "sect_role" in expected:
+        assert actual.sect_role == expected["sect_role"], (
+            f"{label} : rôle de secte {actual.sect_role} != {expected['sect_role']}"
+        )
+
+
+def assert_rulerships_match(observation: Observation, fixture: dict) -> None:
+    by_planet = {r.planet: r for r in observation.rulerships}
+    for planet, expected in fixture["rulerships"].items():
+        actual = by_planet[planet]
+        assert list(actual.domicile_signs) == expected["domicile_signs"], (
+            f"{planet} : domiciles {actual.domicile_signs} != {expected['domicile_signs']}"
+        )
+        assert list(actual.houses_governed) == expected["houses_governed"], (
+            f"{planet} : maisons régies {actual.houses_governed} != {expected['houses_governed']}"
+        )
 
 
 def assert_observation_matches(observation: Observation, fixture: dict) -> None:
@@ -53,3 +73,4 @@ def assert_observation_matches(observation: Observation, fixture: dict) -> None:
         assert_point_matches(observation.planet(name), expected, name)
     assert_point_matches(observation.part_of_fortune, fixture["part_of_fortune"], "Part de Fortune")
     assert_point_matches(observation.part_of_spirit, fixture["part_of_spirit"], "Part de l'Esprit")
+    assert_rulerships_match(observation, fixture)
