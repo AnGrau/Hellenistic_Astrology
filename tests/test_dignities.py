@@ -8,6 +8,7 @@ from hellenistic_astrology.core.dignities import (
     egyptian_bound_ruler,
     essential_dignity,
     mutual_receptions_by_domicile,
+    solar_proximity,
     traditional_rulerships,
     triplicity_dignity,
 )
@@ -199,3 +200,13 @@ def test_decan_dignity_when_planet_is_its_own_decan_ruler():
 
 def test_decan_dignity_none_when_not_ruler():
     assert decan_dignity("Vénus", "Bélier", 5) is None
+
+
+def test_solar_proximity_computes_angular_gap_to_sun():
+    proximities = {
+        sp.planet: sp.gap_degrees
+        for sp in solar_proximity(sun_longitude=10.0, planet_longitudes={"Mercure": 20.0, "Mars": 200.0})
+    }
+    assert proximities["Mercure"] == pytest.approx(10.0)
+    # 200° - 10° = 190°, écart réel = 360 - 190 = 170° (angular_gap borne à [0,180]).
+    assert proximities["Mars"] == pytest.approx(170.0)

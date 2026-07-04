@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 
-from .dignities import MutualReception, Rulership
+from .dignities import MutualReception, Rulership, SolarProximity
 from .zodiacal_releasing import ReleasingChapter
 
 
@@ -65,6 +65,9 @@ class Observation:
     # l'algorithme et docgen.builder pour le rendu.
     zodiacal_releasing_fortune: list[ReleasingChapter] = field(default_factory=list)
     zodiacal_releasing_spirit: list[ReleasingChapter] = field(default_factory=list)
+    # Écart angulaire au Soleil pour les 5 planètes non-luminaires (combustion
+    # / « sous les rayons ») — voir core.dignities.solar_proximity.
+    solar_proximity: list[SolarProximity] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -95,6 +95,30 @@ def mutual_receptions_by_domicile(positions: dict[str, str]) -> list[MutualRecep
     return receptions
 
 
+@dataclass(frozen=True)
+class SolarProximity:
+    planet: str
+    gap_degrees: float
+
+
+def solar_proximity(sun_longitude: float, planet_longitudes: dict[str, float]) -> list[SolarProximity]:
+    """Écart angulaire réel (`aspects.angular_gap`) entre chaque planète et
+    le Soleil — pas de seuil ici : la classification « combuste » (< 15°,
+    seuil « sous les rayons » confirmé par les deux thèmes de référence, déjà
+    promis en Phase 1 par CLAUDE.md) est une décision de rendu, prise dans
+    docgen (cohérent avec `direction_label`/`format_dms`, déjà des fonctions
+    de classification côté docgen sur des données brutes)."""
+    # Import tardif : évite le cycle dignities -> aspects -> observation ->
+    # dignities (aspects importe PointPosition depuis observation, qui
+    # importe MutualReception/SolarProximity d'ici).
+    from .aspects import angular_gap
+
+    return [
+        SolarProximity(planet=name, gap_degrees=angular_gap(sun_longitude, longitude))
+        for name, longitude in planet_longitudes.items()
+    ]
+
+
 # Maîtres de triplicité, système dorothéen/hellénistique (Dorothée de Sidon,
 # tel que documenté par Chris Brennan) — distinct du système ptoléméen
 # simplifié, qui unifie le maître Eau jour/nuit sur Mars sans maître

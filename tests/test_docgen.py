@@ -6,7 +6,7 @@ import pytest
 from hellenistic_astrology.core import dignities as dignities_module
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
-from hellenistic_astrology.core.dignities import MutualReception
+from hellenistic_astrology.core.dignities import MutualReception, SolarProximity
 from hellenistic_astrology.core.observation import Observation, PointPosition
 from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod
 from hellenistic_astrology.docgen.builder import (
@@ -15,6 +15,7 @@ from hellenistic_astrology.docgen.builder import (
     RULERSHIPS_HEADER,
     ZODIACAL_RELEASING_HEADER,
     add_angularity_section,
+    add_dignities_and_receptions_section,
     add_elemental_modal_section,
     add_minor_dignities_table,
     add_zodiacal_releasing_table,
@@ -236,6 +237,56 @@ def test_add_elemental_modal_and_angularity_sections_synthetic():
     )
 
 
+def test_add_dignities_and_receptions_section_synthetic():
+    def make_planet(name, sign, essential_dignity, retrograde):
+        return PointPosition(
+            name=name, sign=sign, degree_in_sign=0, house=1,
+            essential_dignity=essential_dignity, retrograde=retrograde,
+        )
+
+    planets = [
+        make_planet("Soleil", "Balance", "Chute", False),
+        make_planet("Lune", "Taureau", "Exaltation", False),
+        make_planet("Mercure", "Gémeaux", "Pérégrin", False),
+        make_planet("Vénus", "Balance", "Pérégrine", True),
+        make_planet("Mars", "Taureau", "Exil (détriment)", True),
+        make_planet("Jupiter", "Sagittaire", "Pérégrin", False),
+        make_planet("Saturne", "Lion", "Exil (détriment)", False),
+    ]
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=midheaven,
+        planets=planets,
+        mutual_receptions=[MutualReception(planet_a="Mars", planet_b="Vénus")],
+        solar_proximity=[
+            SolarProximity(planet="Mercure", gap_degrees=10.0),
+            SolarProximity(planet="Vénus", gap_degrees=20.0),
+            SolarProximity(planet="Mars", gap_degrees=25.0),
+            SolarProximity(planet="Jupiter", gap_degrees=5.0),
+            SolarProximity(planet="Saturne", gap_degrees=40.0),
+        ],
+    )
+    document = Document()
+
+    add_dignities_and_receptions_section(document, observation)
+
+    bullets = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
+    assert bullets == [
+        "En chute : Soleil (Balance).",
+        "En exaltation : Lune (Taureau).",
+        "En exil (détriment) : Mars (Taureau), Saturne (Lion).",
+        "Pérégrins (sans dignité essentielle) : Mercure, Vénus, Jupiter.",
+        "Réception mutuelle par domicile : Mars et Vénus.",
+        "Sous les rayons du Soleil (moins de 15°) : Mercure (10°00' d'écart) et Jupiter (5°00' d'écart). "
+        "Vénus est hors de cette configuration (20°00' d'écart).",
+        "Rétrogrades : Vénus et Mars.",
+    ]
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -320,9 +371,10 @@ def test_build_observation_document_structure(fixture_name):
         )
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
-    assert heading2_texts[-2:] == [
+    assert heading2_texts[-3:] == [
         "Répartition élémentaire et modale",
         "Angularité",
+        "Dignités et réceptions",
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
@@ -368,6 +420,16 @@ def test_build_observation_document_structure(fixture_name):
     expected_bullets += [
         mutual_reception_text(MutualReception(planet_a=r["planet_a"], planet_b=r["planet_b"]))
         for r in fixture["mutual_receptions"]
+    ]
+
+    # Recoupe la section Dignités et réceptions en l'appelant directement sur
+    # la même observation (déjà testée en isolation par le test synthétique
+    # ci-dessus) : vérifie ici seulement le branchement dans
+    # build_observation_document, pas l'exactitude du gabarit lui-même.
+    dignities_document = Document()
+    add_dignities_and_receptions_section(dignities_document, observation)
+    expected_bullets += [
+        p.text for p in dignities_document.paragraphs if p.style.name == "List Bullet"
     ]
 
     actual_bullets = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]

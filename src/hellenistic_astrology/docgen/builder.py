@@ -42,6 +42,21 @@ MINOR_DIGNITIES_COLUMN_WIDTHS_DXA = [1700, 2900, 2900, 2300]
 ZODIACAL_RELEASING_HEADER = ["Niveau", "Signe", "Maître", "Début", "Fin", "Culminante"]
 ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA = [900, 1700, 1700, 1600, 1600, 1400]
 
+# Ordre confirmé par les deux documents de référence (Pérégrin traité à part,
+# voir add_dignities_and_receptions_section) ; Domicile jamais illustré dans
+# les deux thèmes, ordre déduit par cohérence avec le reste de la séquence.
+DIGNITY_CATEGORY_ORDER = ["Domicile", "Chute", "Exaltation", "Exil (détriment)"]
+DIGNITY_LABELS = {
+    "Domicile": "En domicile",
+    "Chute": "En chute",
+    "Exaltation": "En exaltation",
+    "Exil (détriment)": "En exil (détriment)",
+}
+# Seuil « sous les rayons » (combustion), confirmé par les deux documents de
+# référence — déjà promis en Phase 1 par CLAUDE.md, jamais implémenté avant
+# ce jalon.
+COMBUSTION_ORB_DEGREES = 15.0
+
 
 def format_dms(decimal_degrees: float) -> str:
     """Formate un degré décimal dans le signe en notation degrés/minutes.
@@ -316,6 +331,72 @@ def add_angularity_section(document: Document, observation: Observation) -> None
         document.add_paragraph("Hors angularité : " + ", ".join(groups) + ".")
 
 
+def add_dignities_and_receptions_section(document: Document, observation: Observation) -> None:
+    """Dignités et réceptions, en Phase 2 : liste à puces (comme les aspects,
+    jalon 4), pas de rédaction relationnelle — réutilise presque entièrement
+    des données déjà calculées (dignité essentielle, réception mutuelle,
+    rétrogradation), plus la combustion (« sous les rayons »).
+
+    Simplifications assumées par rapport aux documents de référence, qui
+    divergent stylistiquement sur ces points (même logique que le jalon 4) :
+    pas de qualificatif subjectif "juste" pour la planète non combuste la
+    plus proche du seuil ; titre "Rétrogrades" invariant (pas d'accord
+    singulier/pluriel ni de qualificatif "(parmi les sept planètes...)").
+    """
+    by_category: dict[str, list[PointPosition]] = {}
+    peregrines = []
+    for planet in observation.planets:
+        dignity = planet.essential_dignity
+        if dignity in ("Pérégrin", "Pérégrine"):
+            peregrines.append(planet)
+        elif dignity is not None:
+            by_category.setdefault(dignity, []).append(planet)
+
+    # Listes à virgules simples (pas de "et" final), y compris pour 2
+    # éléments : convention confirmée par les deux documents de référence
+    # pour les catégories de dignité et les pérégrins spécifiquement,
+    # distincte de la jonction _join_french utilisée plus bas (réceptions,
+    # combustion, rétrogrades) qui, elle, ajoute "et" avant le dernier élément.
+    for category in DIGNITY_CATEGORY_ORDER:
+        members = by_category.get(category)
+        if members:
+            names = ", ".join(f"{p.name} ({p.sign})" for p in members)
+            document.add_paragraph(f"{DIGNITY_LABELS[category]} : {names}.", style="List Bullet")
+
+    if peregrines:
+        names = ", ".join(p.name for p in peregrines)
+        document.add_paragraph(
+            f"Pérégrins (sans dignité essentielle) : {names}.", style="List Bullet"
+        )
+
+    for reception in observation.mutual_receptions:
+        document.add_paragraph(
+            f"Réception mutuelle par domicile : {reception.planet_a} et {reception.planet_b}.",
+            style="List Bullet",
+        )
+
+    combust = [sp for sp in observation.solar_proximity if sp.gap_degrees < COMBUSTION_ORB_DEGREES]
+    non_combust = [
+        sp for sp in observation.solar_proximity if sp.gap_degrees >= COMBUSTION_ORB_DEGREES
+    ]
+    if combust:
+        combust_text = _join_french(
+            [f"{sp.planet} ({format_dms(sp.gap_degrees)} d'écart)" for sp in combust]
+        )
+        sentence = f"Sous les rayons du Soleil (moins de {COMBUSTION_ORB_DEGREES:g}°) : {combust_text}."
+        if non_combust:
+            nearest = min(non_combust, key=lambda sp: sp.gap_degrees)
+            sentence += (
+                f" {nearest.planet} est hors de cette configuration "
+                f"({format_dms(nearest.gap_degrees)} d'écart)."
+            )
+        document.add_paragraph(sentence, style="List Bullet")
+
+    retrogrades = [p.name for p in observation.planets if p.retrograde]
+    if retrogrades:
+        document.add_paragraph(f"Rétrogrades : {_join_french(retrogrades)}.", style="List Bullet")
+
+
 def build_observation_document(observation: Observation) -> Document:
     """Construit le document .docx : Phase 1 (Observation) complète, et les
     sous-sections de Phase 2 (Fiche technique) déjà couvertes par docgen
@@ -356,5 +437,8 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Angularité", level=2)
     add_angularity_section(document, observation)
+
+    document.add_heading("Dignités et réceptions", level=2)
+    add_dignities_and_receptions_section(document, observation)
 
     return document

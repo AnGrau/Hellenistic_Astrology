@@ -118,6 +118,11 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
     positions_by_planet = {p.name: p.sign for p in planets}
     mutual_receptions = dignities.mutual_receptions_by_domicile(positions_by_planet)
 
+    solar_proximity = dignities.solar_proximity(
+        sun_lon,
+        {name: raw.longitude for name, raw in raw_planets.items() if name not in {"Soleil", "Lune"}},
+    )
+
     zr_horizon = utc_dt + timedelta(days=365.25 * ZODIACAL_RELEASING_HORIZON_YEARS)
     zodiacal_releasing_fortune = zodiacal_releasing.releasing_chapters(
         part_of_fortune.sign, utc_dt, zr_horizon
@@ -144,4 +149,5 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         cluster_aspects=cluster_aspects,
         zodiacal_releasing_fortune=zodiacal_releasing_fortune,
         zodiacal_releasing_spirit=zodiacal_releasing_spirit,
+        solar_proximity=solar_proximity,
     )
