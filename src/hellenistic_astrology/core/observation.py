@@ -2,6 +2,7 @@ import json
 from dataclasses import asdict, dataclass, field
 
 from .dignities import MutualReception, Rulership, SolarProximity
+from .eclipse import EclipseConfiguration
 from .lunation import LunationPhase
 from .zodiacal_releasing import ReleasingChapter
 
@@ -71,6 +72,9 @@ class Observation:
     solar_proximity: list[SolarProximity] = field(default_factory=list)
     # Phase de lunaison natale (Rudhyar, 8 phases) — voir core.lunation.
     lunation_phase: LunationPhase | None = None
+    # Configuration d'éclipse à la naissance (Lune proche d'un Nœud et de la
+    # syzygie Soleil-Lune correspondante) — voir core.eclipse.
+    eclipse: EclipseConfiguration | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)

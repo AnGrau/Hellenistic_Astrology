@@ -4,6 +4,7 @@ from docx import Document
 
 from ..core.aspects import ClusterAspect, SignCluster, sign_aspect
 from ..core.dignities import DOMICILES, MutualReception
+from ..core.eclipse import SOLAR_ECLIPSE_ORB_DEGREES
 from ..core.houses import house_quality, index_of_sign
 from ..core.observation import Observation, PointPosition
 from ..core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod, is_peak_period
@@ -600,6 +601,79 @@ def add_luminaries_section(document: Document, observation: Observation) -> None
     )
 
 
+def _node_axis_clause(observation: Observation) -> str:
+    """Axe des Nœuds : signe/maison des deux Nœuds, conjonction de signe
+    éventuelle pour chacun (`_conjunction_clause`), et proximité réelle au
+    Nœud le plus proche de la Lune quand elle dépasse le seuil de
+    configuration solaire (le plus large des deux seuils d'éclipse, voir
+    `core.eclipse`) — notable même sans configuration d'éclipse complète
+    (cas d'Anthony : Lune à moins de 1° du Nœud Sud, mais loin de toute
+    syzygie)."""
+    segments = []
+    for node in (observation.north_node, observation.south_node):
+        label = f"{node.name} en {node.sign} (maison {node.house})"
+        conjunction = _conjunction_clause(node, observation)
+        if conjunction:
+            label += f", {conjunction}"
+        segments.append(label)
+    sentence = "Axe des Nœuds : " + ", ".join(segments)
+
+    eclipse = observation.eclipse
+    if eclipse.node_gap_degrees < SOLAR_ECLIPSE_ORB_DEGREES:
+        sentence += (
+            f", la Lune est proche du {eclipse.closer_node} en degrés réels "
+            f"({format_dms(eclipse.node_gap_degrees)} d'écart)"
+        )
+    return sentence + "."
+
+
+def _fortune_spirit_relation_clause(observation: Observation) -> str:
+    """Relation d'aspect par signe entre la Part de Fortune et la Part de
+    l'Esprit — réutilise `sign_aspect` (Phase 1), pas de nouveau calcul."""
+    fortune = observation.part_of_fortune
+    spirit = observation.part_of_spirit
+    # Majuscule : cette clause démarre toujours le paragraphe (contrairement
+    # à DISPLAY_NAME_WITH_ARTICLE, pensé pour un usage en milieu de phrase).
+    fortune_label = f"La Part de Fortune ({fortune.sign}, maison {fortune.house})"
+    spirit_label = f"la Part de l'Esprit ({spirit.sign}, maison {spirit.house})"
+    aspect = sign_aspect(fortune.sign, spirit.sign)
+    if aspect == "Aversion":
+        return (
+            f"{fortune_label} et {spirit_label} sont en aversion : "
+            "aucun aspect ptoléméen ne les relie directement."
+        )
+    return f"{fortune_label} en {ASPECT_LABEL[aspect]} avec {spirit_label}."
+
+
+def _eclipse_configuration_clause(observation: Observation) -> str:
+    """Configuration d'éclipse à la naissance (`core.eclipse`) : Lune proche
+    d'un Nœud et de la syzygie Soleil-Lune correspondante, aux seuils
+    astronomiques standard d'éclipse partielle (validé avec l'utilisateur,
+    jalon 25 — aucun des deux thèmes de référence n'a de configuration
+    d'éclipse, ce choix de seuil n'est donc pas calibrable sur un cas positif
+    réel)."""
+    eclipse = observation.eclipse
+    prefix = (
+        f"Configuration d'éclipse à la naissance (éclipse {eclipse.eclipse_type})"
+        if eclipse.is_eclipse
+        else "Aucune configuration d'éclipse à la naissance"
+    )
+    return (
+        f"{prefix} : écart Lune-Nœud de {format_dms(eclipse.node_gap_degrees)}, "
+        f"écart Soleil-Lune de {format_dms(eclipse.syzygy_gap_degrees)} "
+        f"par rapport à la {eclipse.syzygy_type}."
+    )
+
+
+def add_nodes_and_parts_section(document: Document, observation: Observation) -> None:
+    """Nœuds et Parts, en Phase 2 : axe des Nœuds, relation Fortune/Esprit,
+    configuration d'éclipse — dernière sous-section rédactionnelle de la
+    Fiche technique."""
+    document.add_paragraph(_node_axis_clause(observation))
+    document.add_paragraph(_fortune_spirit_relation_clause(observation))
+    document.add_paragraph(_eclipse_configuration_clause(observation))
+
+
 def build_observation_document(observation: Observation) -> Document:
     """Construit le document .docx : Phase 1 (Observation) complète, et les
     sous-sections de Phase 2 (Fiche technique) déjà couvertes par docgen
@@ -649,5 +723,8 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Luminaires", level=2)
     add_luminaries_section(document, observation)
+
+    document.add_heading("Nœuds et Parts", level=2)
+    add_nodes_and_parts_section(document, observation)
 
     return document

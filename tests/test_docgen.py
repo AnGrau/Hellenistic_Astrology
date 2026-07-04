@@ -7,6 +7,7 @@ from hellenistic_astrology.core import dignities as dignities_module
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
 from hellenistic_astrology.core.dignities import MutualReception, Rulership, SolarProximity
+from hellenistic_astrology.core.eclipse import EclipseConfiguration
 from hellenistic_astrology.core.lunation import LunationPhase
 from hellenistic_astrology.core.observation import Observation, PointPosition
 from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod
@@ -21,6 +22,7 @@ from hellenistic_astrology.docgen.builder import (
     add_elemental_modal_section,
     add_luminaries_section,
     add_minor_dignities_table,
+    add_nodes_and_parts_section,
     add_zodiacal_releasing_table,
     build_observation_document,
     cluster_aspect_text,
@@ -502,6 +504,100 @@ def test_add_luminaries_section_sun_combustion_and_no_sect_light():
     )
 
 
+def test_add_nodes_and_parts_section_synthetic_with_conjunctions_and_eclipse():
+    # Les deux Nœuds ont chacun un co-résident de signe (teste
+    # `_conjunction_clause` pour les deux), l'écart Lune-Nœud est sous le
+    # seuil solaire (mention de proximité), la relation Fortune/Esprit est un
+    # vrai aspect (trigone, pas une aversion), et la configuration est une
+    # éclipse solaire (branche positive de `_eclipse_configuration_clause`,
+    # non illustrée par les deux thèmes de référence qui n'en ont aucune).
+    ascendant = PointPosition(name="Ascendant", sign="Cancer", degree_in_sign=0, house=1)
+    venus = PointPosition(name="Vénus", sign="Bélier", degree_in_sign=0, house=3)
+    soleil = PointPosition(name="Soleil", sign="Balance", degree_in_sign=0, house=9)
+    north_node = PointPosition(name="Nœud Nord", sign="Bélier", degree_in_sign=0, house=3)
+    south_node = PointPosition(name="Nœud Sud", sign="Balance", degree_in_sign=0, house=9)
+    fortune = PointPosition(name="Part de Fortune", sign="Lion", degree_in_sign=0, house=7)
+    spirit = PointPosition(name="Part de l'Esprit", sign="Sagittaire", degree_in_sign=0, house=11)
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Verseau", degree_in_sign=0, house=8),
+        planets=[venus, soleil],
+        part_of_fortune=fortune,
+        part_of_spirit=spirit,
+        north_node=north_node,
+        south_node=south_node,
+        clusters=[
+            SignCluster(sign="Bélier", house=3, members=("Nœud Nord", "Vénus")),
+            SignCluster(sign="Balance", house=9, members=("Nœud Sud", "Soleil")),
+            SignCluster(sign="Lion", house=7, members=("Part de Fortune",)),
+            SignCluster(sign="Sagittaire", house=11, members=("Part de l'Esprit",)),
+        ],
+        eclipse=EclipseConfiguration(
+            is_eclipse=True, eclipse_type="solaire", node_gap_degrees=5.0, closer_node="Nœud Nord",
+            syzygy_type="Nouvelle Lune", syzygy_gap_degrees=3.0,
+        ),
+    )
+    document = Document()
+
+    add_nodes_and_parts_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs == [
+        "Axe des Nœuds : Nœud Nord en Bélier (maison 3), conjoint à Vénus, "
+        "Nœud Sud en Balance (maison 9), conjoint à Soleil, "
+        "la Lune est proche du Nœud Nord en degrés réels (5°00' d'écart).",
+        "La Part de Fortune (Lion, maison 7) en trigone avec la Part de l'Esprit (Sagittaire, maison 11).",
+        "Configuration d'éclipse à la naissance (éclipse solaire) : écart Lune-Nœud de 5°00', "
+        "écart Soleil-Lune de 3°00' par rapport à la Nouvelle Lune.",
+    ]
+
+
+def test_add_nodes_and_parts_section_synthetic_no_conjunction_no_eclipse():
+    # Les deux Nœuds sont seuls dans leur signe (pas de clause de
+    # conjonction), l'écart Lune-Nœud dépasse le seuil solaire (pas de
+    # mention de proximité), et la relation Fortune/Esprit est une aversion.
+    ascendant = PointPosition(name="Ascendant", sign="Poissons", degree_in_sign=0, house=1)
+    north_node = PointPosition(name="Nœud Nord", sign="Cancer", degree_in_sign=0, house=4)
+    south_node = PointPosition(name="Nœud Sud", sign="Capricorne", degree_in_sign=0, house=10)
+    fortune = PointPosition(name="Part de Fortune", sign="Taureau", degree_in_sign=0, house=2)
+    spirit = PointPosition(name="Part de l'Esprit", sign="Gémeaux", degree_in_sign=0, house=3)
+    observation = Observation(
+        name="Test",
+        sect="nocturne",
+        ascendant=ascendant,
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Sagittaire", degree_in_sign=0, house=10),
+        planets=[],
+        part_of_fortune=fortune,
+        part_of_spirit=spirit,
+        north_node=north_node,
+        south_node=south_node,
+        clusters=[
+            SignCluster(sign="Taureau", house=2, members=("Part de Fortune",)),
+            SignCluster(sign="Gémeaux", house=3, members=("Part de l'Esprit",)),
+            SignCluster(sign="Cancer", house=4, members=("Nœud Nord",)),
+            SignCluster(sign="Capricorne", house=10, members=("Nœud Sud",)),
+        ],
+        eclipse=EclipseConfiguration(
+            is_eclipse=False, eclipse_type=None, node_gap_degrees=25.0, closer_node="Nœud Sud",
+            syzygy_type="Pleine Lune", syzygy_gap_degrees=40.0,
+        ),
+    )
+    document = Document()
+
+    add_nodes_and_parts_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs == [
+        "Axe des Nœuds : Nœud Nord en Cancer (maison 4), Nœud Sud en Capricorne (maison 10).",
+        "La Part de Fortune (Taureau, maison 2) et la Part de l'Esprit (Gémeaux, maison 3) sont en aversion : "
+        "aucun aspect ptoléméen ne les relie directement.",
+        "Aucune configuration d'éclipse à la naissance : écart Lune-Nœud de 25°00', "
+        "écart Soleil-Lune de 40°00' par rapport à la Pleine Lune.",
+    ]
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -586,12 +682,13 @@ def test_build_observation_document_structure(fixture_name):
         )
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
-    assert heading2_texts[-5:] == [
+    assert heading2_texts[-6:] == [
         "Répartition élémentaire et modale",
         "Angularité",
         "Dignités et réceptions",
         "Ascendant et son maître",
         "Luminaires",
+        "Nœuds et Parts",
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
@@ -706,6 +803,11 @@ def test_build_observation_document_structure(fixture_name):
         for i, p in enumerate(all_paragraphs)
         if p.style.name == "Heading 2" and p.text == "Luminaires"
     )
+    nodes_and_parts_heading_index = next(
+        i
+        for i, p in enumerate(all_paragraphs)
+        if p.style.name == "Heading 2" and p.text == "Nœuds et Parts"
+    )
     ascendant_paragraphs = [
         p.text
         for p in all_paragraphs[ascendant_heading_index + 1 : luminaries_heading_index]
@@ -748,6 +850,42 @@ def test_build_observation_document_structure(fixture_name):
         ],
     }
     luminaries_paragraphs = [
-        p.text for p in all_paragraphs[luminaries_heading_index + 1 :] if p.text
+        p.text
+        for p in all_paragraphs[luminaries_heading_index + 1 : nodes_and_parts_heading_index]
+        if p.text
     ]
     assert luminaries_paragraphs == expected_luminaries_paragraphs[fixture_name]
+
+    # "Nœuds et Parts" recoupé mot pour mot contre le texte réel des deux
+    # documents, aux simplifications assumées près (voir
+    # docgen.builder.add_nodes_and_parts_section) : mention systématique de
+    # la conjonction de signe pour chaque Nœud (`_conjunction_clause`,
+    # absente du Nœud Nord d'Anthony dans le document d'origine, qui ne
+    # mentionne que le Nœud Sud), proximité réelle au Nœud phrasée sans la
+    # nuance "quasiment à l'opposition" du document d'Anthony (le Nœud le
+    # plus proche de la Lune est nommé explicitement — Nœud Sud pour
+    # Anthony, par conjonction réelle), et configuration d'éclipse reformulée
+    # en un gabarit unique donnant les deux écarts chiffrés plutôt que la
+    # prose libre (différente entre les deux documents) de "Nœuds et Parts".
+    expected_nodes_and_parts_paragraphs = {
+        "anthony": [
+            "Axe des Nœuds : Nœud Nord en Verseau (maison 7), conjoint à la Part d'Éros, "
+            "Nœud Sud en Lion (maison 1), conjoint à l'Ascendant et Lune, "
+            "la Lune est proche du Nœud Sud en degrés réels (0°33' d'écart).",
+            "La Part de Fortune (Scorpion, maison 4) en opposition avec la Part de l'Esprit (Taureau, maison 10).",
+            "Aucune configuration d'éclipse à la naissance : écart Lune-Nœud de 0°33', "
+            "écart Soleil-Lune de 89°32' par rapport à la Pleine Lune.",
+        ],
+        "liam": [
+            "Axe des Nœuds : Nœud Nord en Bélier (maison 3), "
+            "Nœud Sud en Balance (maison 9), conjoint à Soleil et Jupiter.",
+            "La Part de Fortune (Lion, maison 7) et la Part de l'Esprit (Cancer, maison 6) sont en aversion : "
+            "aucun aspect ptoléméen ne les relie directement.",
+            "Aucune configuration d'éclipse à la naissance : écart Lune-Nœud de 39°11', "
+            "écart Soleil-Lune de 26°32' par rapport à la Pleine Lune.",
+        ],
+    }
+    nodes_and_parts_paragraphs = [
+        p.text for p in all_paragraphs[nodes_and_parts_heading_index + 1 :] if p.text
+    ]
+    assert nodes_and_parts_paragraphs == expected_nodes_and_parts_paragraphs[fixture_name]
