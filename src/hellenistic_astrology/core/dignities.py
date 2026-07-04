@@ -69,3 +69,27 @@ def traditional_rulerships(ascendant_longitude: float) -> list[Rulership]:
         )
         rulerships.append(Rulership(planet=planet, domicile_signs=ordered_signs, houses_governed=houses))
     return rulerships
+
+
+@dataclass(frozen=True)
+class MutualReception:
+    planet_a: str
+    planet_b: str
+
+
+def mutual_receptions_by_domicile(positions: dict[str, str]) -> list[MutualReception]:
+    """Réceptions mutuelles par domicile entre planètes classiques : A est
+    dans un domicile de B, et B est dans un domicile de A, simultanément.
+
+    `positions` associe chaque planète à son signe ; l'ordre d'itération du
+    dict détermine l'ordre (planet_a, planet_b) de chaque paire détectée.
+    """
+    names = list(positions.keys())
+    receptions = []
+    for i, planet_a in enumerate(names):
+        for planet_b in names[i + 1 :]:
+            if positions[planet_a] in DOMICILES.get(planet_b, ()) and positions[
+                planet_b
+            ] in DOMICILES.get(planet_a, ()):
+                receptions.append(MutualReception(planet_a=planet_a, planet_b=planet_b))
+    return receptions

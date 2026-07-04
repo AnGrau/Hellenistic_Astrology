@@ -2,6 +2,7 @@ import pytest
 
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
+from hellenistic_astrology.core.dignities import MutualReception
 from hellenistic_astrology.docgen.builder import (
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
@@ -10,6 +11,7 @@ from hellenistic_astrology.docgen.builder import (
     conjunction_text,
     direction_label,
     format_dms,
+    mutual_reception_text,
 )
 
 from .regression_helpers import birth_data_from_fixture, load_fixture
@@ -85,6 +87,13 @@ def test_cluster_aspect_text_boundary_exception():
     )
 
 
+def test_mutual_reception_text():
+    reception = MutualReception(planet_a="Vénus", planet_b="Mars")
+    assert mutual_reception_text(reception) == (
+        "Réception mutuelle par domicile entre Vénus et Mars."
+    )
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -155,6 +164,10 @@ def test_build_observation_document_structure(fixture_name):
             clusters_by_sign,
         )
         for a in fixture["cluster_aspects"]
+    ]
+    expected_bullets += [
+        mutual_reception_text(MutualReception(planet_a=r["planet_a"], planet_b=r["planet_b"]))
+        for r in fixture["mutual_receptions"]
     ]
 
     actual_bullets = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]

@@ -86,6 +86,9 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
     clusters = aspects.build_clusters(all_points)
     cluster_aspects = aspects.compute_cluster_aspects(clusters, all_points)
 
+    positions_by_planet = {p.name: p.sign for p in planets}
+    mutual_receptions = dignities.mutual_receptions_by_domicile(positions_by_planet)
+
     return Observation(
         name=birth.name,
         sect="diurne" if diurnal else "nocturne",
@@ -98,6 +101,7 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         north_node=north_node,
         south_node=south_node,
         rulerships=dignities.traditional_rulerships(ascendant_lon),
+        mutual_receptions=mutual_receptions,
         all_points=all_points,
         clusters=clusters,
         cluster_aspects=cluster_aspects,

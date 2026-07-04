@@ -77,6 +77,15 @@ def assert_cluster_aspects_match(observation: Observation, fixture: dict) -> Non
     )
 
 
+def assert_mutual_receptions_match(observation: Observation, fixture: dict) -> None:
+    actual = [
+        {"planet_a": r.planet_a, "planet_b": r.planet_b} for r in observation.mutual_receptions
+    ]
+    assert actual == fixture["mutual_receptions"], (
+        f"réceptions mutuelles {actual} != {fixture['mutual_receptions']}"
+    )
+
+
 def assert_observation_matches(observation: Observation, fixture: dict) -> None:
     assert observation.sect == fixture["sect"], (
         f"secte {observation.sect} != {fixture['sect']}"
@@ -93,3 +102,4 @@ def assert_observation_matches(observation: Observation, fixture: dict) -> None:
     assert_rulerships_match(observation, fixture)
     assert_clusters_match(observation, fixture)
     assert_cluster_aspects_match(observation, fixture)
+    assert_mutual_receptions_match(observation, fixture)

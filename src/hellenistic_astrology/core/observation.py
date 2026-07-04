@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 
-from .dignities import Rulership
+from .dignities import MutualReception, Rulership
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,7 @@ class Observation:
     north_node: PointPosition | None = None
     south_node: PointPosition | None = None
     rulerships: list[Rulership] = field(default_factory=list)
+    mutual_receptions: list[MutualReception] = field(default_factory=list)
     # Tous les points ci-dessus, dans l'ordre canonique d'affichage (celui du
     # tableau des positions des documents de référence) : source unique
     # utilisée par docgen et par le calcul des amas/aspects, pour éviter que

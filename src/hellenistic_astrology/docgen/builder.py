@@ -1,6 +1,7 @@
 from docx import Document
 
 from ..core.aspects import ClusterAspect, SignCluster
+from ..core.dignities import MutualReception
 from ..core.observation import Observation, PointPosition
 from . import styles
 
@@ -128,9 +129,15 @@ def cluster_aspect_text(cluster_aspect: ClusterAspect, clusters_by_sign: dict[st
     )
 
 
+def mutual_reception_text(reception: MutualReception) -> str:
+    return f"Réception mutuelle par domicile entre {reception.planet_a} et {reception.planet_b}."
+
+
 def add_aspects_section(document: Document, observation: Observation) -> None:
-    """Puces factuelles des aspects par signe : conjonctions intra-amas puis
-    relation d'aspect (ou aversion) pour chaque paire d'amas.
+    """Puces factuelles des aspects par signe : conjonctions intra-amas,
+    relation d'aspect (ou aversion) pour chaque paire d'amas, puis les
+    réceptions mutuelles par domicile (un lien technique indépendant des
+    aspects, placé ici comme dans les documents de référence).
 
     Le commentaire interprétatif (ex. significations de maîtrise) reste hors
     périmètre de docgen : c'est une tâche de rédaction, pas de calcul.
@@ -145,6 +152,9 @@ def add_aspects_section(document: Document, observation: Observation) -> None:
         document.add_paragraph(
             cluster_aspect_text(cluster_aspect, clusters_by_sign), style="List Bullet"
         )
+
+    for reception in observation.mutual_receptions:
+        document.add_paragraph(mutual_reception_text(reception), style="List Bullet")
 
 
 def build_observation_document(observation: Observation) -> Document:
