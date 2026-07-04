@@ -60,6 +60,30 @@ def _next_sign(sign: str) -> str:
     return SIGNS[(index_of_sign(sign) + 1) % 12]
 
 
+def angular_signs_from(sign: str) -> set[str]:
+    """Les 4 signes angulaires (1er/4e/7e/10e) comptés depuis `sign` — toujours
+    le même groupe de modalité (cardinal/fixe/mutable) que `sign`."""
+    i = index_of_sign(sign)
+    return {SIGNS[(i + offset) % 12] for offset in (0, 3, 6, 9)}
+
+
+def is_peak_period(period: ReleasingPeriod, fortune_sign: str) -> bool:
+    """Période culminante ("peak period") : son signe est angulaire (1er,
+    4e, 7e ou 10e) par rapport au signe de la Part de Fortune — toujours la
+    Fortune, y compris quand la séquence de périodes suit la Part de
+    l'Esprit. Confirmé par une source primaire (Chris Brennan, transcription
+    du podcast épisode 192) : « you also wanna identify the other three
+    signs that are angular to that sign [the Lot of Fortune] » et « when you
+    start from the Lot of Spirit and you count around the zodiac until it
+    comes to one of these four signs that are angular from the Lot of
+    Fortune... it will coincide with what we call a peak period ». S'applique
+    à tous les niveaux (L1 à L4) : la même règle, juste appliquée au signe de
+    chaque période individuellement — Brennan confirme L1 explicitement, le
+    calculateur Augurine confirme aussi L2.
+    """
+    return period.sign in angular_signs_from(fortune_sign)
+
+
 def level_periods(level: int, start_sign: str, start: datetime, duration: timedelta) -> list[ReleasingPeriod]:
     """Découpe `duration` à partir de `start` en périodes consécutives de
     signes de `level`, à partir de `start_sign`, tournant autant de fois que

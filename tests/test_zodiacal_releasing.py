@@ -7,6 +7,8 @@ from hellenistic_astrology.core.zodiacal_releasing import (
     SIGN_RULERS,
     ZODIACAL_RELEASING_YEARS,
     active_period,
+    angular_signs_from,
+    is_peak_period,
     level_periods,
     releasing_tree,
     sub_periods,
@@ -168,3 +170,39 @@ def test_l1_from_part_of_spirit_reference_charts(fixture_name, expected_spirit_s
 
     assert periods[0].sign == expected_spirit_sign
     assert periods[0].start == birth_dt
+
+
+# Périodes culminantes ("peak periods") : confirmées par une source primaire
+# (Chris Brennan, podcast épisode 192) — angulaires (1er/4e/7e/10e) toujours
+# par rapport à la Part de Fortune, même en suivant la séquence de l'Esprit.
+def test_angular_signs_are_the_same_modality_group():
+    # Scorpion (fixe) : les 3 autres signes fixes lui sont angulaires.
+    assert angular_signs_from("Scorpion") == {"Scorpion", "Verseau", "Taureau", "Lion"}
+
+
+def test_angular_signs_include_the_sign_itself():
+    assert "Bélier" in angular_signs_from("Bélier")
+
+
+@pytest.mark.parametrize(
+    "fixture_name, expected_fortune_sign",
+    [("anthony", "Scorpion"), ("liam", "Lion")],
+)
+def test_is_peak_period_against_reference_charts_fortune(fixture_name, expected_fortune_sign):
+    fixture = load_fixture(fixture_name)
+    assert fixture["part_of_fortune"]["sign"] == expected_fortune_sign
+
+    angular = angular_signs_from(expected_fortune_sign)
+    for sign in ["Bélier", "Taureau", "Gémeaux", "Cancer", "Lion", "Vierge", "Balance", "Scorpion", "Sagittaire", "Capricorne", "Verseau", "Poissons"]:
+        period = level_periods(1, sign, datetime(2000, 1, 1), timedelta(days=1))[0]
+        assert is_peak_period(period, expected_fortune_sign) == (sign in angular)
+
+
+def test_is_peak_period_reference_stays_fortune_even_when_tracking_spirit():
+    # Séquence suivant la Part de l'Esprit (Taureau, Anthony) : les périodes
+    # culminantes restent mesurées depuis la Part de Fortune (Scorpion), pas
+    # depuis l'Esprit lui-même.
+    fortune_sign = "Scorpion"
+    spirit_start = "Taureau"
+    periods = releasing_tree(spirit_start, datetime(2000, 1, 1), datetime(2010, 1, 1), max_level=1)
+    assert is_peak_period(periods[0], fortune_sign) is True  # Taureau est angulaire à Scorpion (fixe)
