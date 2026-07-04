@@ -17,6 +17,10 @@ class BirthData:
     latitude: float | None = None
     longitude: float | None = None
     place: str | None = None
+    # Indice pays (ISO 3166-1 alpha-2, ex. "fr") pour restreindre la
+    # recherche de géocodage et lever une ambiguïté (ex. plusieurs "Paris"
+    # dans le monde). Ignoré si `place` n'est pas utilisé.
+    country_code: str | None = None
     local_date: date | None = None
     local_time: time | None = None
     tz_name: str | None = None
@@ -25,12 +29,14 @@ class BirthData:
 
 def birth_data_from_dict(data: dict) -> BirthData:
     """Construit un BirthData depuis un dict JSON (name, latitude+longitude
-    ou place, local_date/local_time/tz_name, ou utc_datetime en alternative)."""
+    ou place [+ country_code optionnel], local_date/local_time/tz_name, ou
+    utc_datetime en alternative)."""
     return BirthData(
         name=data["name"],
         latitude=data.get("latitude"),
         longitude=data.get("longitude"),
         place=data.get("place"),
+        country_code=data.get("country_code"),
         local_date=date.fromisoformat(data["local_date"]) if "local_date" in data else None,
         local_time=time.fromisoformat(data["local_time"]) if "local_time" in data else None,
         tz_name=data.get("tz_name"),
