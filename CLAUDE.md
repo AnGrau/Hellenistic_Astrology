@@ -54,7 +54,7 @@ Ces URLs pointent vers les pages officielles (éditeur ou auteur/autrice). Si le
 - Génération du `.docx` : décision actée d'utiliser **python-docx** (pas de sous-processus Node) — le script Node/docx-js évoqué initialement n'a jamais existé dans ce dépôt.
 - CLI : `hellenistic-astrology <fichier-birth-data.json>` (entry point `src/hellenistic_astrology/cli.py`, déclaré dans `pyproject.toml`), voir `README.md`.
 - Géocodage (`core/geocoding.py`) : opt-in uniquement — `latitude`/`longitude` explicites sont toujours prioritaires et n'entraînent aucun appel réseau ; le champ `place` (texte libre) n'est résolu via Nominatim/OpenStreetMap que s'ils sont absents. Invariant à préserver : ne jamais géocoder silencieusement quand des coordonnées directes existent déjà.
-- Docker : prévu (en vue d'une exposition future en service) ; le CLI ci-dessus lève le seul blocage technique, mais l'ajout reste une décision à prendre explicitement (voir Reste à faire).
+- Docker : laissé de côté explicitement pour l'instant (voir Reste à faire) ; aucun blocage technique, mais aucun besoin actif identifié non plus.
 
 ## Avant tout commit et push sur GitHub
 
@@ -186,7 +186,7 @@ Roadmap explicite, dans l'ordre de priorité recommandé. Chaque jalon reste à 
 
 1. **Plugin Claude Code** — mis de côté explicitement (jalon 32) : ce projet est lié à un seul dépôt (le serveur MCP n'a de sens que contre ce code précis), donc « réutilisable dans d'autres projets » n'est pas un vrai bénéfice ici, et un Plugin n'aiderait ni Mistral Vibe/Le Chat (format de bundle spécifique à Claude Code) ni Claude Chat/Le Chat en tant que tels. À reconsidérer seulement si un besoin concret émerge (slash command, hooks Claude-Code-spécifiques).
 2. **Serveur MCP distant/hébergé publiquement** (pour Claude Chat ou Mistral Le Chat directement, sans logiciel local) — explicitement **non engagé**, bloqué sur la décision de budgeter la licence Swiss Ephemeris Professional (voir Environnement de travail) avant toute mise en ligne, plus les questions d'hébergement (qui paie/maintient le serveur, sécurité des données de naissance transmises sur le réseau, disponibilité). Le serveur MCP local (jalon 28) et le skill d'orchestration (jalon 32) couvrent déjà Claude Code, Claude Desktop et Mistral Vibe sans ce risque.
-3. **Docker** — prévu ; sa condition initiale (un point d'entrée réel) est désormais remplie par le CLI du jalon 5, donc plus aucun blocage technique, mais toujours pas engagé sans décision explicite.
+3. **Docker** — **laissé de côté explicitement pour l'instant** (bénéfices discutés avec l'utilisateur) : aucun blocage technique (le CLI du jalon 5 remplit la condition initiale), mais aucun besoin actif non plus. Le seul bénéfice concret identifié (faciliter l'usage par quelqu'un d'autre sans installer Python/`uv`) ne correspond à aucun besoin présent ; la raison d'origine (« en vue d'une exposition future en service ») reste bloquée sur la question de licence Swiss Ephemeris Professional (item 2). Point notable, à garder en tête si reconsidéré un jour : dockeriser dégraderait l'intégration MCP actuelle (jalons 28/30/32), qui repose sur un sous-processus local léger (`uv run python -m hellenistic_astrology.mcp_server`) — un conteneur ajouterait de la latence de démarrage et exigerait des volumes montés (`output/`, `data/ephe/`) pour ne pas perdre l'état entre deux invocations.
 
 ## Cas de test de référence (vérité terrain)
 
