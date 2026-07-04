@@ -1,6 +1,6 @@
-"""Serveur MCP local (stdio) exposant le calcul de thème (Phase 1/2) et le
-brief de Phase 3 (jalon 26) à Claude Code et Mistral Vibe, quand ils
-travaillent sur ce dépôt cloné.
+"""Serveur MCP local (stdio) exposant le calcul de thème (Phase 1/2), le
+brief de Phase 3 (jalon 26) et l'assemblage du document final (jalon 30)
+à Claude Code et Mistral Vibe, quand ils travaillent sur ce dépôt cloné.
 
 Transport stdio uniquement (sous-processus local, aucune exposition
 réseau) : structurellement identique, du point de vue de la licence
@@ -19,6 +19,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
+from .assembly import assemble_final_document as _assemble_final_document_impl
 from .cli import slugify
 from .core.chart import build_observation
 from .core.geocoding import GeocodingError
@@ -68,6 +69,15 @@ def _generate_interpretation_brief(birth_data: dict) -> str:
     return brief
 
 
+def _assemble_final_document(docx_path: str, markdown_path: str, output_path: str | None = None) -> str:
+    """Assemble le document final (jalon 30) : ajoute la prose de Phase 3
+    déjà rédigée et finalisée (`markdown_path`) à la suite d'un .docx de
+    Phase 1/2 déjà généré (`docx_path`). Réutilise
+    `assembly.assemble_final_document`."""
+    target = _assemble_final_document_impl(docx_path, markdown_path, output_path)
+    return f"écrit : {target}"
+
+
 def _with_error_handling(fn, *args) -> str:
     try:
         return fn(*args)
@@ -99,6 +109,15 @@ def generate_interpretation_brief(birth_data: dict) -> str:
     (Interprétation) d'un thème natal hellénistique — à utiliser avec le
     skill `hellenistic-astrology-phase3` pour rédiger le texte final."""
     return _with_error_handling(_generate_interpretation_brief, birth_data)
+
+
+@mcp.tool()
+def assemble_final_document(docx_path: str, markdown_path: str, output_path: str | None = None) -> str:
+    """Assemble le document final : ajoute la prose de Phase 3 déjà rédigée
+    et finalisée (fichier Markdown) à la suite d'un .docx de Phase 1/2 déjà
+    généré (`generate_document`). N'écrase jamais le .docx d'entrée : écrit
+    par défaut vers <docx_path>_final.docx. Renvoie le chemin écrit."""
+    return _with_error_handling(_assemble_final_document, docx_path, markdown_path, output_path)
 
 
 if __name__ == "__main__":

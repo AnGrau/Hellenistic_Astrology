@@ -60,7 +60,7 @@ Un skill Claude Code (`.claude/skills/hellenistic-astrology-phase3/`) rédige ce
 
 ## Serveur MCP local
 
-Un serveur MCP local (`src/hellenistic_astrology/mcp_server.py`, transport stdio — sous-processus local, aucune exposition réseau) expose trois outils à Claude Code et Mistral Vibe quand ils travaillent sur ce dépôt cloné : `compute_observation` (JSON structuré), `generate_document` (`.docx` complet) et `generate_interpretation_brief` (brief de Phase 3).
+Un serveur MCP local (`src/hellenistic_astrology/mcp_server.py`, transport stdio — sous-processus local, aucune exposition réseau) expose quatre outils à Claude Code et Mistral Vibe quand ils travaillent sur ce dépôt cloné : `compute_observation` (JSON structuré), `generate_document` (`.docx` complet), `generate_interpretation_brief` (brief de Phase 3) et `assemble_final_document` (ajoute la prose de Phase 3, une fois rédigée et finalisée, à la suite du `.docx` — voir "Assembler le document final" ci-dessous).
 
 - **Claude Code** : rien à faire, `.mcp.json` est déjà committé à la racine du dépôt ; approuver le serveur au premier lancement (`claude mcp list` pour vérifier son statut).
 - **Claude Desktop** (testé avec succès en conditions réelles, Windows + WSL2) : Claude Desktop ne découvre pas `.mcp.json` automatiquement (contrairement à Claude Code) — il faut l'ajouter à sa propre config globale, **Réglages → Développeur → Modifier la config** (fichier `%APPDATA%\Claude\claude_desktop_config.json` sur Windows). Depuis un poste Windows dont le dépôt vit dans WSL2, le serveur doit être lancé via `wsl.exe` :
@@ -85,3 +85,15 @@ Un serveur MCP local (`src/hellenistic_astrology/mcp_server.py`, transport stdio
 - **Mistral Vibe** : ajouter la même commande (`uv run --directory <chemin-du-dépôt> python -m hellenistic_astrology.mcp_server`) dans sa propre configuration de serveurs MCP locaux (voir sa documentation — pas de fichier de config Vibe committé ici).
 
 Ce serveur reste volontairement **local uniquement** : un serveur MCP hébergé publiquement (pour Claude Chat ou Mistral Le Chat directement, sans logiciel local) est hors périmètre pour l'instant, car il déclencherait la clause de licence Swiss Ephemeris Professional déjà notée dans `CLAUDE.md` (section Environnement de travail).
+
+## Assembler le document final
+
+Une fois la Phase 3 rédigée et **finalisée** (relue/éditée dans le chat ou dans son fichier `.md` — pas avant), l'ajouter à la suite du `.docx` de Phase 1/2 déjà généré :
+
+```bash
+uv run python scripts/assemble_document.py output/anthony.docx output/anthony_phase3_draft.md
+```
+
+Écrit par défaut vers `<docx>_final.docx` (ex. `output/anthony_final.docx`) — **ne modifie jamais le `.docx` d'entrée**. Chemin de sortie personnalisable avec `-o`/`--output`. Même opération disponible comme outil MCP (`assemble_final_document`, voir ci-dessus) depuis Claude Code/Vibe.
+
+Le texte Markdown est traité tel quel (titres `#`/`##`, paragraphes, puces `- `, emphase `*texte*`) — c'est pourquoi la finalisation doit précéder l'assemblage : ce script ne relit ni ne corrige le contenu, il ne fait que le mettre en forme dans le document.

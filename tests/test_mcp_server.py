@@ -4,6 +4,7 @@ import docx
 import pytest
 
 from hellenistic_astrology.mcp_server import (
+    _assemble_final_document,
     _compute_observation_json,
     _generate_document,
     _generate_interpretation_brief,
@@ -63,6 +64,25 @@ def test_generate_interpretation_brief_contains_expected_sections(tmp_path, monk
     assert "## Orientation générale" in brief
     assert "## Repères temporels actuels" in brief
     assert (tmp_path / "anthony_brief.md").read_text(encoding="utf-8") == brief
+
+
+def test_assemble_final_document_appends_and_returns_confirmation(tmp_path):
+    docx_path = tmp_path / "anthony.docx"
+    markdown_path = tmp_path / "anthony_phase3_draft.md"
+    docx.Document().save(docx_path)
+    markdown_path.write_text("# Phase 3 — Interprétation\n\nUn paragraphe.\n", encoding="utf-8")
+
+    result = _assemble_final_document(str(docx_path), str(markdown_path))
+
+    expected = tmp_path / "anthony_final.docx"
+    assert result == f"écrit : {expected}"
+    assert expected.exists()
+
+
+def test_assemble_final_document_missing_file_returns_error_message(tmp_path):
+    result = _with_error_handling(_assemble_final_document, str(tmp_path / "absent.docx"), str(tmp_path / "absent.md"))
+
+    assert result.startswith("erreur : ")
 
 
 def test_with_error_handling_returns_message_on_value_error():

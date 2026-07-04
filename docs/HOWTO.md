@@ -103,11 +103,20 @@ supervisée, pas un rendu automatique.
 
 Le résultat est un brouillon à relire : chaque affirmation technique doit
 rester vérifiable depuis le brief (voir les règles de style dans le brief
-lui-même et dans `CLAUDE.md`).
+lui-même et dans `CLAUDE.md`). **Finaliser ce texte avant l'étape
+suivante** (relire, éditer dans le chat ou directement dans le fichier
+`.md`) — l'assemblage ne relit ni ne corrige le contenu, il ne fait que le
+mettre en forme dans le document.
 
 ## 5. Assembler le document final
 
-À ce stade, aucune étape automatique ne recolle le `.docx` de la Phase 1/2
-(étape 3) et le texte rédigé de la Phase 3 (étape 4) : copier la prose
-obtenue à la suite du document généré. C'est un point encore ouvert du
-projet (voir "Reste à faire" dans `CLAUDE.md`).
+Une fois la Phase 3 finalisée, la coller à la suite du `.docx` de Phase
+1/2 (étape 3) :
+
+```bash
+uv run python scripts/assemble_document.py output/naissance.docx output/naissance_phase3.md
+```
+
+Écrit par défaut vers `<docx>_final.docx`, sans jamais modifier le `.docx`
+d'entrée. Même opération disponible comme outil MCP
+(`assemble_final_document`) depuis Claude Code/Vibe — voir `README.md`.
