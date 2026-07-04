@@ -141,3 +141,46 @@ def triplicity_dignity(planet: str, sign: str) -> str | None:
     if planet == rulers["participant"]:
         return "Maître de triplicité (participant)"
     return None
+
+
+# Bornes/termes égyptiens : chaque signe est divisé en 5 segments inégaux,
+# chacun attribué à l'une des 5 planètes non-luminaires. Table transmise par
+# Vettius Valens (Anthologiae, Livre I) et reprise par Chris Brennan
+# (Hellenistic Astrology). Fournie et vérifiée par l'utilisateur — voir
+# docs/table_termes_egyptiens.md pour les sources et la méthode de vérification
+# (aucune fixture Anthony/Liam ne documente les bornes).
+# Chaque valeur : liste de (borne supérieure exclusive, planète), les bornes
+# étant cumulatives à partir de 0° et totalisant 30° par signe.
+EGYPTIAN_BOUNDS: dict[str, list[tuple[float, str]]] = {
+    "Bélier": [(6, "Jupiter"), (12, "Vénus"), (20, "Mercure"), (25, "Mars"), (30, "Saturne")],
+    "Taureau": [(8, "Vénus"), (14, "Mercure"), (22, "Jupiter"), (27, "Saturne"), (30, "Mars")],
+    "Gémeaux": [(6, "Mercure"), (12, "Jupiter"), (17, "Vénus"), (24, "Mars"), (30, "Saturne")],
+    "Cancer": [(7, "Mars"), (13, "Vénus"), (19, "Mercure"), (26, "Jupiter"), (30, "Saturne")],
+    "Lion": [(6, "Jupiter"), (11, "Vénus"), (18, "Saturne"), (24, "Mercure"), (30, "Mars")],
+    "Vierge": [(7, "Mercure"), (13, "Vénus"), (18, "Jupiter"), (24, "Saturne"), (30, "Mars")],
+    "Balance": [(6, "Saturne"), (14, "Mercure"), (21, "Jupiter"), (28, "Vénus"), (30, "Mars")],
+    "Scorpion": [(7, "Mars"), (11, "Vénus"), (19, "Mercure"), (24, "Jupiter"), (30, "Saturne")],
+    "Sagittaire": [(12, "Jupiter"), (17, "Vénus"), (21, "Mercure"), (26, "Saturne"), (30, "Mars")],
+    "Capricorne": [(7, "Mercure"), (14, "Jupiter"), (22, "Vénus"), (26, "Saturne"), (30, "Mars")],
+    "Verseau": [(7, "Mercure"), (13, "Vénus"), (20, "Jupiter"), (25, "Mars"), (30, "Saturne")],
+    "Poissons": [(12, "Vénus"), (16, "Jupiter"), (19, "Mercure"), (28, "Mars"), (30, "Saturne")],
+}
+
+
+def egyptian_bound_ruler(sign: str, degree_in_sign: float) -> str:
+    """Maître du terme (bornes égyptiennes) occupé par ce degré, indépendamment
+    de la planète qui s'y trouve."""
+    if not (0 <= degree_in_sign < 30):
+        raise ValueError(f"degree_in_sign doit être dans [0, 30) : {degree_in_sign}")
+    for upper_bound, ruler in EGYPTIAN_BOUNDS[sign]:
+        if degree_in_sign < upper_bound:
+            return ruler
+    raise AssertionError(f"Table de bornes incomplète pour {sign} — devrait couvrir [0, 30).")
+
+
+def bound_dignity(planet: str, sign: str, degree_in_sign: float) -> str | None:
+    """"Maître du terme" si `planet` est elle-même la maîtresse du terme
+    (borne égyptienne) qu'elle occupe, sinon None."""
+    if planet == egyptian_bound_ruler(sign, degree_in_sign):
+        return "Maître du terme (bornes égyptiennes)"
+    return None

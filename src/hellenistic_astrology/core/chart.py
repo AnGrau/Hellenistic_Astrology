@@ -29,6 +29,7 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         retrograde: bool | None = None,
         essential_dignity: str | None = None,
         triplicity_dignity: str | None = None,
+        bound_dignity: str | None = None,
         sect_role: str | None = None,
         speed: float | None = None,
     ) -> PointPosition:
@@ -40,6 +41,7 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
             retrograde=retrograde,
             essential_dignity=essential_dignity,
             triplicity_dignity=triplicity_dignity,
+            bound_dignity=bound_dignity,
             sect_role=sect_role,
             speed=speed,
         )
@@ -53,6 +55,9 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
             retrograde=raw.retrograde,
             essential_dignity=dignities.essential_dignity(name, houses.sign_name(raw.longitude)),
             triplicity_dignity=dignities.triplicity_dignity(name, houses.sign_name(raw.longitude)),
+            bound_dignity=dignities.bound_dignity(
+                name, houses.sign_name(raw.longitude), houses.degree_in_sign(raw.longitude)
+            ),
             sect_role=sect.sect_role(name, diurnal),
             speed=raw.speed,
         )

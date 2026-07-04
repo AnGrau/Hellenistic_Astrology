@@ -1,4 +1,9 @@
+import pytest
+
 from hellenistic_astrology.core.dignities import (
+    EGYPTIAN_BOUNDS,
+    bound_dignity,
+    egyptian_bound_ruler,
     essential_dignity,
     mutual_receptions_by_domicile,
     traditional_rulerships,
@@ -91,3 +96,46 @@ def test_triplicity_water_rulers():
 
 def test_triplicity_none_when_not_a_ruler():
     assert triplicity_dignity("Mercure", "Bélier") is None
+
+
+def test_egyptian_bounds_each_sign_totals_30_degrees():
+    for sign, segments in EGYPTIAN_BOUNDS.items():
+        assert segments[-1][0] == 30, f"{sign} ne totalise pas 30°"
+        previous = 0
+        for upper_bound, _ruler in segments:
+            assert upper_bound > previous, f"{sign} : bornes non strictement croissantes"
+            previous = upper_bound
+
+
+def test_egyptian_bound_ruler_aries_boundaries():
+    # Bélier : Jupiter 0-6, Vénus 6-12, Mercure 12-20, Mars 20-25, Saturne 25-30.
+    assert egyptian_bound_ruler("Bélier", 0) == "Jupiter"
+    assert egyptian_bound_ruler("Bélier", 5.9999) == "Jupiter"
+    assert egyptian_bound_ruler("Bélier", 6) == "Vénus"
+    assert egyptian_bound_ruler("Bélier", 19.9999) == "Mercure"
+    assert egyptian_bound_ruler("Bélier", 20) == "Mars"
+    assert egyptian_bound_ruler("Bélier", 29.9999) == "Saturne"
+
+
+def test_egyptian_bound_ruler_aquarius_boundaries():
+    # Verseau : Mercure 0-7, Vénus 7-13, Jupiter 13-20, Mars 20-25, Saturne 25-30.
+    assert egyptian_bound_ruler("Verseau", 0) == "Mercure"
+    assert egyptian_bound_ruler("Verseau", 7) == "Vénus"
+    assert egyptian_bound_ruler("Verseau", 13) == "Jupiter"
+    assert egyptian_bound_ruler("Verseau", 20) == "Mars"
+    assert egyptian_bound_ruler("Verseau", 25) == "Saturne"
+
+
+def test_egyptian_bound_ruler_rejects_out_of_range_degree():
+    with pytest.raises(ValueError):
+        egyptian_bound_ruler("Bélier", 30)
+    with pytest.raises(ValueError):
+        egyptian_bound_ruler("Bélier", -1)
+
+
+def test_bound_dignity_when_planet_is_its_own_bound_ruler():
+    assert bound_dignity("Jupiter", "Bélier", 3) == "Maître du terme (bornes égyptiennes)"
+
+
+def test_bound_dignity_none_when_not_ruler():
+    assert bound_dignity("Mars", "Bélier", 3) is None
