@@ -97,3 +97,7 @@ uv run python scripts/assemble_document.py output/anthony.docx output/anthony_ph
 Écrit par défaut vers `<docx>_final.docx` (ex. `output/anthony_final.docx`) — **ne modifie jamais le `.docx` d'entrée**. Chemin de sortie personnalisable avec `-o`/`--output`. Même opération disponible comme outil MCP (`assemble_final_document`, voir ci-dessus) depuis Claude Code/Vibe.
 
 Le texte Markdown est traité tel quel (titres `#`/`##`, paragraphes, puces `- `, emphase `*texte*`) — c'est pourquoi la finalisation doit précéder l'assemblage : ce script ne relit ni ne corrige le contenu, il ne fait que le mettre en forme dans le document.
+
+## Licence
+
+AGPL-3.0-or-later (voir [`LICENSE`](LICENSE)) — ce dépôt importe directement `pyswisseph` (Swiss Ephemeris), lui-même sous AGPL-3.0 ; distribuer ce code sous une licence compatible s'impose donc aussi, indépendamment de toute question de service réseau. Voir `CLAUDE.md`, section Environnement de travail, pour le détail (dont la distinction avec la clause spécifique à l'AGPL sur les services hébergés publiquement, qui reste une question séparée et non engagée).

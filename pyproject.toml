@@ -3,6 +3,7 @@ name = "hellenistic-astrology"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = [
     "pyswisseph>=2.10",
