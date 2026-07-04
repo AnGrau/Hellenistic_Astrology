@@ -45,4 +45,15 @@ Le `.docx` est écrit dans `output/<nom>.docx` par défaut (dossier gitignored, 
 
 Le document généré couvre la Phase 1 complète (Observation : positions — y compris Nœud Nord/Sud et Part d'Éros —, maîtrises traditionnelles, dignités mineures — triplicité, bornes égyptiennes, décans —, aspects par signe, réceptions mutuelles par domicile, libération zodiacale niveaux L1+L2 sur 100 ans depuis la Part de Fortune et la Part de l'Esprit, y compris le relâchement du lien) ainsi que la Phase 2 complète (Fiche technique : répartition élémentaire et modale, angularité, dignités et réceptions — y compris la combustion « sous les rayons du Soleil » —, Ascendant et son maître, Luminaires — y compris la phase de lunaison natale —, Nœuds et Parts — y compris la configuration d'éclipse).
 
-La Phase 3 (Interprétation) n'est pas encore automatisée dans le CLI : `hellenistic_astrology.interpretation.brief.build_interpretation_brief()` assemble un brief factuel déterministe (réutilisant les faits déjà calculés en Phase 1/2, plus la période de libération zodiacale active aujourd'hui) destiné à une rédaction assistée hors CLI, pas à un rendu automatique — voir "Reste à faire" dans `CLAUDE.md` pour la suite.
+La Phase 3 (Interprétation) n'est pas encore automatisée dans le CLI : `hellenistic_astrology.interpretation.brief.build_interpretation_brief()` assemble un brief factuel déterministe (réutilisant les faits déjà calculés en Phase 1/2, plus la période de libération zodiacale active aujourd'hui) destiné à une rédaction assistée hors CLI, pas à un rendu automatique.
+
+Un skill Claude Code (`.claude/skills/hellenistic-astrology-phase3/`) rédige cette Phase 3 à partir d'un brief déjà généré, en respectant les règles de style du projet et en restant traçable aux faits fournis. Il suit le standard ouvert [Agent Skills](https://agentskills.io) et fonctionne aussi sur Claude.ai/Claude Chat et Mistral Vibe (une fois copié ou référencé dans leur propre dossier de skills) — voir "Reste à faire" dans `CLAUDE.md` pour la suite.
+
+## Serveur MCP local
+
+Un serveur MCP local (`src/hellenistic_astrology/mcp_server.py`, transport stdio — sous-processus local, aucune exposition réseau) expose trois outils à Claude Code et Mistral Vibe quand ils travaillent sur ce dépôt cloné : `compute_observation` (JSON structuré), `generate_document` (`.docx` complet) et `generate_interpretation_brief` (brief de Phase 3).
+
+- **Claude Code** : rien à faire, `.mcp.json` est déjà committé à la racine du dépôt ; approuver le serveur au premier lancement (`claude mcp list` pour vérifier son statut).
+- **Mistral Vibe** : ajouter la même commande (`uv run --directory <chemin-du-dépôt> python -m hellenistic_astrology.mcp_server`) dans sa propre configuration de serveurs MCP locaux (voir sa documentation — pas de fichier de config Vibe committé ici).
+
+Ce serveur reste volontairement **local uniquement** : un serveur MCP hébergé publiquement (pour Claude Chat ou Mistral Le Chat directement, sans logiciel local) est hors périmètre pour l'instant, car il déclencherait la clause de licence Swiss Ephemeris Professional déjà notée dans `CLAUDE.md` (section Environnement de travail).
