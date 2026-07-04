@@ -20,6 +20,7 @@ Le dépôt sera versionné sur GitHub.
 - Aspects hors-signe ignorés, sauf si la planète la plus rapide applique à moins de 3° à la planète la plus lente.
 - Solaire (retour solaire) : lieu de naissance, Soleil non précessé.
 - Secte de la carte déterminée par la position du Soleil au-dessus ou au-dessous de l'horizon ; la Part de Fortune et la Part de l'Esprit changent de formule selon secte diurne/nocturne (piège fréquent à tester explicitement).
+- Rôle de secte par planète : règle symétrique retenue pour le luminaire « en désaccord » avec la secte de la carte — toujours « Hors secte (jour) » ou « Hors secte (nuit) », jamais « Neutre » (un des deux thèmes de référence contenait une asymétrie sur ce point, corrigée après validation explicite).
 
 ## Méthode de rédaction en trois phases (à respecter dans tout générateur de texte ou de document)
 
@@ -55,8 +56,11 @@ Ces URLs pointent vers les pages officielles (éditeur ou auteur/autrice). Si le
 ## État d'avancement
 
 - **Jalon 1 (terminé)** : cœur de calcul (`src/hellenistic_astrology/core/`) — positions planétaires, maisons en signes entiers, secte, Part de Fortune/Esprit, résolution de fuseau horaire. Validé par `tests/test_regression_anthony.py` et `tests/test_regression_liam.py` (écarts sous 0,5' d'arc par rapport aux thèmes de référence).
-- **Jalon 2 (à venir)** : génération du `.docx` en python-docx à partir de l'objet `Observation`.
-- **Jalons suivants** : aspects par signe, dignités essentielles complètes, libération zodiacale, puis Skill Claude (`skills/hellenistic-astrology/SKILL.md`), MCP uniquement si un besoin réel émerge.
+- **Jalon 2 (terminé)** :
+  - 2a — `core/dignities.py` (dignités essentielles domicile/exaltation/exil/chute/pérégrin, au niveau du signe ; table des maîtrises traditionnelles) et `core/sect.py` étendu avec le rôle de secte par planète.
+  - 2b — `docgen/builder.py` génère la Phase 1 (Observation) en `.docx` via python-docx (tableaux positions + maîtrises), à partir de l'objet `Observation` uniquement. `scripts/generate_docx.py` permet une génération manuelle vers `output/` (gitignored). Phases 2 et 3 (rédaction, interprétation) restent hors périmètre de docgen : ce sont des tâches de génération de texte, pas de mise en forme de données.
+  - Validé par `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py` en plus des tests de régression.
+- **Jalons suivants** : aspects par signe, dignités essentielles plus fines (bornes/triplicité si besoin), libération zodiacale, puis Skill Claude (`skills/hellenistic-astrology/SKILL.md`), MCP uniquement si un besoin réel émerge.
 
 ## Cas de test de référence (vérité terrain)
 
@@ -67,11 +71,11 @@ Deux thèmes ont déjà été analysés manuellement et validés : ils servent d
 
 Tout module de calcul (positions, maisons, secte, dignités, Lots) doit être testé contre ces deux thèmes avant d'être considéré fiable.
 
-**Ces données de naissance ne sont jamais poussées sur GitHub** : `/References` (les `.docx` sources) et `/tests/fixtures` (les valeurs transcrites en JSON) sont dans `.gitignore`. Le code des tests (`tests/test_regression_*.py`, `tests/test_timezone.py`) reste versionné ; seules les données personnelles qu'il consomme restent locales.
+**Ces données de naissance ne sont jamais poussées sur GitHub** : `/References` (les `.docx` sources), `/tests/fixtures` (les valeurs transcrites en JSON) et `/output` (les `.docx` générés par `scripts/generate_docx.py`) sont dans `.gitignore`. Le code des tests (`tests/test_regression_*.py`, `tests/test_timezone.py`, `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py`) reste versionné ; seules les données personnelles qu'il consomme ou produit restent locales.
 
 ## Ce que Claude Code ne doit pas faire sans validation explicite
 
 - Ne pas modifier les réglages astrologiques listés ci-dessus (ce sont des choix méthodologiques assumés par l'utilisateur, pas des paramètres à optimiser).
 - Ne pas remplacer les livres de référence ni en ajouter d'autres sans demande explicite.
-- Ne pas publier ou committer de données personnelles de tiers (dates de naissance, lieux) au-delà des deux cas de test ci-dessus, qui ont déjà été partagés volontairement par l'utilisateur — et même pour ces deux cas, ne jamais retirer `/References` et `/tests/fixtures` du `.gitignore` sans demande explicite.
-- Ne pas choisir seul les jalons suivants (docgen, Skill, MCP) sans validation explicite, même si la trajectoire générale est déjà actée ci-dessus.
+- Ne pas publier ou committer de données personnelles de tiers (dates de naissance, lieux) au-delà des deux cas de test ci-dessus, qui ont déjà été partagés volontairement par l'utilisateur — et même pour ces deux cas, ne jamais retirer `/References`, `/tests/fixtures` ou `/output` du `.gitignore` sans demande explicite.
+- Ne pas choisir seul les jalons suivants (aspects, libération zodiacale, Skill, MCP) sans validation explicite, même si la trajectoire générale est déjà actée ci-dessus.
