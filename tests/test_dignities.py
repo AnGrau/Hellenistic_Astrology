@@ -2,6 +2,7 @@ from hellenistic_astrology.core.dignities import (
     essential_dignity,
     mutual_receptions_by_domicile,
     traditional_rulerships,
+    triplicity_dignity,
 )
 
 
@@ -60,3 +61,33 @@ def test_mutual_reception_one_directional_does_not_count():
 def test_mutual_reception_none_when_no_match():
     positions = {"Soleil": "Bélier", "Lune": "Gémeaux"}
     assert mutual_receptions_by_domicile(positions) == []
+
+
+def test_triplicity_fire_rulers():
+    assert triplicity_dignity("Soleil", "Bélier") == "Maître de triplicité (jour)"
+    assert triplicity_dignity("Jupiter", "Lion") == "Maître de triplicité (nuit)"
+    assert triplicity_dignity("Saturne", "Sagittaire") == "Maître de triplicité (participant)"
+
+
+def test_triplicity_earth_rulers():
+    assert triplicity_dignity("Vénus", "Taureau") == "Maître de triplicité (jour)"
+    assert triplicity_dignity("Lune", "Vierge") == "Maître de triplicité (nuit)"
+    assert triplicity_dignity("Mars", "Capricorne") == "Maître de triplicité (participant)"
+
+
+def test_triplicity_air_rulers():
+    assert triplicity_dignity("Saturne", "Gémeaux") == "Maître de triplicité (jour)"
+    assert triplicity_dignity("Mercure", "Balance") == "Maître de triplicité (nuit)"
+    assert triplicity_dignity("Jupiter", "Verseau") == "Maître de triplicité (participant)"
+
+
+def test_triplicity_water_rulers():
+    # Système dorothéen (Vénus/Mars/Lune) — pas le système ptoléméen
+    # simplifié (Mars jour et nuit, sans participant).
+    assert triplicity_dignity("Vénus", "Cancer") == "Maître de triplicité (jour)"
+    assert triplicity_dignity("Mars", "Scorpion") == "Maître de triplicité (nuit)"
+    assert triplicity_dignity("Lune", "Poissons") == "Maître de triplicité (participant)"
+
+
+def test_triplicity_none_when_not_a_ruler():
+    assert triplicity_dignity("Mercure", "Bélier") is None

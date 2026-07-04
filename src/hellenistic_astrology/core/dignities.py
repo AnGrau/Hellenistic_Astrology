@@ -93,3 +93,51 @@ def mutual_receptions_by_domicile(positions: dict[str, str]) -> list[MutualRecep
             ] in DOMICILES.get(planet_a, ()):
                 receptions.append(MutualReception(planet_a=planet_a, planet_b=planet_b))
     return receptions
+
+
+# Maîtres de triplicité, système dorothéen/hellénistique (Dorothée de Sidon,
+# tel que documenté par Chris Brennan) — distinct du système ptoléméen
+# simplifié, qui unifie le maître Eau jour/nuit sur Mars sans maître
+# participant. Vérifié contre deux sources indépendantes (Wikipedia "Triplicity"
+# et Augurine, cohérentes entre elles) faute de fixture de référence pour ce
+# calcul : ni le thème d'Anthony ni celui de Liam ne documentent la triplicité.
+TRIPLICITY_RULERS: dict[str, dict[str, str]] = {
+    "Feu": {"jour": "Soleil", "nuit": "Jupiter", "participant": "Saturne"},
+    "Terre": {"jour": "Vénus", "nuit": "Lune", "participant": "Mars"},
+    "Air": {"jour": "Saturne", "nuit": "Mercure", "participant": "Jupiter"},
+    "Eau": {"jour": "Vénus", "nuit": "Mars", "participant": "Lune"},
+}
+
+SIGN_TRIPLICITY: dict[str, str] = {
+    "Bélier": "Feu",
+    "Lion": "Feu",
+    "Sagittaire": "Feu",
+    "Taureau": "Terre",
+    "Vierge": "Terre",
+    "Capricorne": "Terre",
+    "Gémeaux": "Air",
+    "Balance": "Air",
+    "Verseau": "Air",
+    "Cancer": "Eau",
+    "Scorpion": "Eau",
+    "Poissons": "Eau",
+}
+
+
+def triplicity_dignity(planet: str, sign: str) -> str | None:
+    """Maîtrise de triplicité de `planet` dans `sign`, si applicable.
+
+    Les trois maîtres (jour/nuit/participant) sont tous considérés comme
+    dignifiés par triplicité — la secte de la carte détermine lequel est
+    prioritaire pour l'interprétation (hors périmètre ici), pas l'éligibilité
+    elle-même. Un signe n'a jamais deux fois la même planète parmi ses trois
+    maîtres, donc au plus une des trois conditions ci-dessous peut être vraie.
+    """
+    rulers = TRIPLICITY_RULERS[SIGN_TRIPLICITY[sign]]
+    if planet == rulers["jour"]:
+        return "Maître de triplicité (jour)"
+    if planet == rulers["nuit"]:
+        return "Maître de triplicité (nuit)"
+    if planet == rulers["participant"]:
+        return "Maître de triplicité (participant)"
+    return None
