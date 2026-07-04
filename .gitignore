@@ -8,3 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Fichiers de données Swiss Ephemeris (téléchargés par scripts/fetch_ephemeris.py)
+data/ephe/*.se1
+
+# Données personnelles des cas de test (dates/lieux de naissance d'Anthony et Liam) :
+# jamais poussées sur GitHub. Le code des tests reste versionné.
+/tests/fixtures/
+/References/
