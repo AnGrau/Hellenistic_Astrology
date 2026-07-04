@@ -1,16 +1,18 @@
-"""Génère un .docx de la phase 1 (Observation) pour un cas de test local.
+"""Génère un .docx de la phase 1 (Observation) pour un des deux cas de test locaux.
 
 Usage : uv run python scripts/generate_docx.py anthony
 Écrit dans output/<nom>.docx (gitignored : contient des données de naissance).
+
+Pour un nouveau client (au-delà d'Anthony/Liam), utiliser plutôt le CLI
+général : `uv run hellenistic-astrology <fichier-birth-data.json>`.
 """
 
 import json
 import sys
-from datetime import date, time
 from pathlib import Path
 
 from hellenistic_astrology.core.chart import build_observation
-from hellenistic_astrology.core.timezone import BirthData
+from hellenistic_astrology.core.timezone import birth_data_from_dict
 from hellenistic_astrology.docgen.builder import build_observation_document
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
@@ -26,15 +28,7 @@ def main() -> None:
     with open(FIXTURES_DIR / f"{name}.json", encoding="utf-8") as f:
         fixture = json.load(f)
 
-    bd = fixture["birth_data"]
-    birth = BirthData(
-        name=bd["name"],
-        latitude=bd["latitude"],
-        longitude=bd["longitude"],
-        local_date=date.fromisoformat(bd["local_date"]),
-        local_time=time.fromisoformat(bd["local_time"]),
-        tz_name=bd["tz_name"],
-    )
+    birth = birth_data_from_dict(fixture["birth_data"])
     observation = build_observation(birth)
     document = build_observation_document(observation)
 

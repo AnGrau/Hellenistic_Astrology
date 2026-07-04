@@ -51,7 +51,8 @@ Ces URLs pointent vers les pages officielles (éditeur ou auteur/autrice). Si le
 - Éphéméride : **pyswisseph** (Swiss Ephemeris). Licence AGPL-3.0 acceptée pour l'instant ; si un service web/API public est un jour lancé, budgéter la licence commerciale Swiss Ephemeris Professional avant la mise en ligne. Fichiers de données `.se1` téléchargés via `scripts/fetch_ephemeris.py` vers `data/ephe/` (gitignored, jamais committés) ; en leur absence, le calcul bascule automatiquement sur la théorie Moshier/Moseph (précision ~1 arcseconde, suffisante pour les tests).
 - Fuseau horaire : résolution automatique lieu + heure locale via `zoneinfo`, fiable à partir de 1916 (introduction de l'heure d'été en France) ; avant cette date, un datetime UTC explicite est obligatoire (voir `core/timezone.py`).
 - Génération du `.docx` : décision actée d'utiliser **python-docx** (pas de sous-processus Node) — le script Node/docx-js évoqué initialement n'a jamais existé dans ce dépôt.
-- Docker : prévu (en vue d'une exposition future en service), à ajouter à partir du jalon où un point d'entrée exécutable existe réellement — pas dans le module de calcul seul.
+- CLI : `hellenistic-astrology <fichier-birth-data.json>` (entry point `src/hellenistic_astrology/cli.py`, déclaré dans `pyproject.toml`), voir `README.md`.
+- Docker : prévu (en vue d'une exposition future en service) ; le CLI ci-dessus lève le seul blocage technique, mais l'ajout reste une décision à prendre explicitement (voir Reste à faire).
 
 ## État d'avancement
 
@@ -63,24 +64,24 @@ Ces URLs pointent vers les pages officielles (éditeur ou auteur/autrice). Si le
 - **Jalon 3 (terminé)** : `core/aspects.py` — regroupement des points en amas par signe, aspect ptoléméen par signe entre chaque paire d'amas, règle des 3° hors-signe basée sur la proximité écliptique réelle. Les 31 relations d'amas des deux thèmes (10 pour Anthony, 21 pour Liam) ont été vérifiées à la main contre le texte "Aspects par signe relevés" des documents de référence. Validé par `tests/test_aspects.py` et les tests de régression étendus.
   - **Limite connue** : aucun des deux thèmes de référence ne déclenche la règle des 3° (les deux documents confirment explicitement qu'elle ne s'active pas) — le cas positif n'est couvert que par un test synthétique, sans validation sur données réelles. À surveiller si un futur thème la déclenche.
 - **Jalon 4 (terminé)** : `docgen/builder.py` génère la section "Aspects par signe relevés" en puces factuelles — une puce de conjonction par amas (accord grammatical masculin/féminin selon les membres), puis une puce par paire d'amas pour chaque relation d'aspect, aversions incluses. Format volontairement plus simple et déterministe que la prose des deux documents de référence, qui divergeaient stylistiquement entre eux sur ce point. Commentaire interprétatif (significations de maîtrise, etc.) toujours hors périmètre de docgen.
+- **Jalon 5 (terminé)** : CLI réel (`src/hellenistic_astrology/cli.py`, entry point `hellenistic-astrology` déclaré dans `pyproject.toml`) — prend en entrée un fichier JSON de données de naissance (schéma libre, name/latitude/longitude + local_date/local_time/tz_name ou utc_datetime) et génère le `.docx` vers `output/<nom-slugifié>.docx` par défaut. `main.py` (scaffold `uv` mort, jamais branché) a été supprimé. Testé de bout en bout avec un client synthétique en plus des deux fixtures. Usage documenté dans `README.md`.
 - Voir la section **Reste à faire** ci-dessous pour la suite.
 
 ## Reste à faire
 
 Roadmap explicite, dans l'ordre de priorité recommandé. Chaque jalon reste à valider avec l'utilisateur avant d'être attaqué (voir garde-fous ci-dessous) ; l'ordre ci-dessous est une recommandation, pas un engagement figé.
 
-1. **CLI / point d'entrée réel** — aujourd'hui, traiter un nouveau client nécessite d'écrire du Python à la main (`BirthData(...)`) ; `main.py` est toujours le scaffold `uv` par défaut, jamais branché sur le pipeline. Sans ça, l'outil ne sert que pour Anthony et Liam. Priorité haute : c'est ce qui rend le pipeline réellement utilisable.
-2. **Nœud Nord/Sud et Part d'Éros** — présents dans les deux documents de référence (tableau des positions et puces d'aspects) mais jamais calculés ; leur absence est actuellement une omission assumée, pas un choix définitif. Complète le tableau des positions et enrichit les amas/aspects.
-3. **Réceptions mutuelles** — concept observé dans le texte de référence d'Anthony ("réception mutuelle par domicile entre Mars et Vénus") mais jamais implémenté ni discuté comme un item à part entière ; fait partie du relevé factuel de dignités de la Phase 1.
-4. **Vérification automatique des URLs bibliographiques** (`scripts/check_bibliography.py`) — décidée lors de la phase de planification initiale (requête HTTP HEAD sur les 4 URLs avant génération) mais jamais implémentée.
-5. **Dignités essentielles plus fines** (bornes égyptiennes, triplicités par secte, décans) — marqué "si besoin" dès l'origine, le moins prioritaire des calculs restants.
-6. **Libération zodiacale** — technique de repères temporels citée dans l'objectif initial et dans la section optionnelle de la Phase 3.
-7. **Phase 2 — Fiche technique** (répartition élémentaire/modale, angularité, Ascendant et son maître, luminaires, dignités et réceptions, nœuds et Parts, structure du thème) — mélange tableau (élémentaire/modale, déjà vu dans les références) et texte descriptif. Premier vrai changement de nature par rapport aux jalons précédents : ce n'est plus seulement de la mise en forme mécanique de données calculées.
-8. **Phase 3 — Interprétation** (synthèse, nuances de secte/dignité, section optionnelle libération zodiacale) — rédaction pure destinée au client. À ce stade, `docgen` au sens actuel (mise en forme déterministe d'un objet `Observation`) atteint sa limite : c'est une tâche de génération de texte assistée, probablement un prompt structuré plutôt que du code Python déterministe — à repenser en phase de planification dédiée plutôt que de trancher seul.
-9. **`docgen/CLAUDE.md` scopé** — évoqué à deux reprises sans être tranché ; le bon moment est l'attaque de l'item 7 ou 8, puisque c'est le changement de nature de tâche (texte vs données) qui justifierait un fichier séparé.
-10. **Skill Claude** (`skills/hellenistic-astrology/SKILL.md`) — wrapper fin autour du CLI (item 1), idéalement après que les Phases 2/3 existent au moins partiellement.
-11. **Docker** — prévu, explicitement conditionné à l'existence d'un point d'entrée réel (item 1) ; pas avant.
-12. **MCP** — uniquement si un besoin réel émerge d'un usage via Claude Desktop ou similaire ; non engagé.
+1. **Nœud Nord/Sud et Part d'Éros** — présents dans les deux documents de référence (tableau des positions et puces d'aspects) mais jamais calculés ; leur absence est actuellement une omission assumée, pas un choix définitif. Complète le tableau des positions et enrichit les amas/aspects.
+2. **Réceptions mutuelles** — concept observé dans le texte de référence d'Anthony ("réception mutuelle par domicile entre Mars et Vénus") mais jamais implémenté ni discuté comme un item à part entière ; fait partie du relevé factuel de dignités de la Phase 1.
+3. **Vérification automatique des URLs bibliographiques** (`scripts/check_bibliography.py`) — décidée lors de la phase de planification initiale (requête HTTP HEAD sur les 4 URLs avant génération) mais jamais implémentée.
+4. **Dignités essentielles plus fines** (bornes égyptiennes, triplicités par secte, décans) — marqué "si besoin" dès l'origine, le moins prioritaire des calculs restants.
+5. **Libération zodiacale** — technique de repères temporels citée dans l'objectif initial et dans la section optionnelle de la Phase 3.
+6. **Phase 2 — Fiche technique** (répartition élémentaire/modale, angularité, Ascendant et son maître, luminaires, dignités et réceptions, nœuds et Parts, structure du thème) — mélange tableau (élémentaire/modale, déjà vu dans les références) et texte descriptif. Premier vrai changement de nature par rapport aux jalons précédents : ce n'est plus seulement de la mise en forme mécanique de données calculées.
+7. **Phase 3 — Interprétation** (synthèse, nuances de secte/dignité, section optionnelle libération zodiacale) — rédaction pure destinée au client. À ce stade, `docgen` au sens actuel (mise en forme déterministe d'un objet `Observation`) atteint sa limite : c'est une tâche de génération de texte assistée, probablement un prompt structuré plutôt que du code Python déterministe — à repenser en phase de planification dédiée plutôt que de trancher seul.
+8. **`docgen/CLAUDE.md` scopé** — évoqué à deux reprises sans être tranché ; le bon moment est l'attaque de l'item 6 ou 7, puisque c'est le changement de nature de tâche (texte vs données) qui justifierait un fichier séparé.
+9. **Skill Claude** (`skills/hellenistic-astrology/SKILL.md`) — wrapper fin autour du CLI (jalon 5, terminé), idéalement après que les Phases 2/3 existent au moins partiellement.
+10. **Docker** — prévu ; sa condition initiale (un point d'entrée réel) est désormais remplie par le CLI du jalon 5, donc plus aucun blocage technique, mais toujours pas engagé sans décision explicite.
+11. **MCP** — uniquement si un besoin réel émerge d'un usage via Claude Desktop ou similaire ; non engagé.
 
 ## Cas de test de référence (vérité terrain)
 
@@ -91,11 +92,11 @@ Deux thèmes ont déjà été analysés manuellement et validés : ils servent d
 
 Tout module de calcul (positions, maisons, secte, dignités, Lots, aspects) doit être testé contre ces deux thèmes avant d'être considéré fiable.
 
-**Ces données de naissance ne sont jamais poussées sur GitHub** : `/References` (les `.docx` sources), `/tests/fixtures` (les valeurs transcrites en JSON) et `/output` (les `.docx` générés par `scripts/generate_docx.py`) sont dans `.gitignore`. Le code des tests (`tests/test_regression_*.py`, `tests/test_timezone.py`, `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py`, `tests/test_aspects.py`) reste versionné ; seules les données personnelles qu'il consomme ou produit restent locales.
+**Ces données de naissance ne sont jamais poussées sur GitHub** : `/References` (les `.docx` sources), `/tests/fixtures` (les valeurs transcrites en JSON) et `/output` (les `.docx` générés par `scripts/generate_docx.py` ou le CLI) sont dans `.gitignore`. Le code des tests (`tests/test_regression_*.py`, `tests/test_timezone.py`, `tests/test_dignities.py`, `tests/test_sect.py`, `tests/test_docgen.py`, `tests/test_aspects.py`, `tests/test_cli.py`) reste versionné ; seules les données personnelles qu'il consomme ou produit restent locales.
 
 ## Ce que Claude Code ne doit pas faire sans validation explicite
 
 - Ne pas modifier les réglages astrologiques listés ci-dessus (ce sont des choix méthodologiques assumés par l'utilisateur, pas des paramètres à optimiser).
 - Ne pas remplacer les livres de référence ni en ajouter d'autres sans demande explicite.
 - Ne pas publier ou committer de données personnelles de tiers (dates de naissance, lieux) au-delà des deux cas de test ci-dessus, qui ont déjà été partagés volontairement par l'utilisateur — et même pour ces deux cas, ne jamais retirer `/References`, `/tests/fixtures` ou `/output` du `.gitignore` sans demande explicite.
-- Ne pas choisir seul l'ordre ou le périmètre des items listés dans "Reste à faire" sans validation explicite — la priorisation proposée est une recommandation, pas un mandat. En particulier, ne pas décider seul de l'approche pour les Phases 2/3 (item 8) : c'est un changement de nature de tâche qui mérite sa propre discussion de planification.
+- Ne pas choisir seul l'ordre ou le périmètre des items listés dans "Reste à faire" sans validation explicite — la priorisation proposée est une recommandation, pas un mandat. En particulier, ne pas décider seul de l'approche pour les Phases 2/3 (items 6/7) : c'est un changement de nature de tâche qui mérite sa propre discussion de planification.

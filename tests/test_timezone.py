@@ -2,9 +2,43 @@ from datetime import date, datetime, time, timezone
 
 import pytest
 
-from hellenistic_astrology.core.timezone import BirthData, resolve_utc
+from hellenistic_astrology.core.timezone import BirthData, birth_data_from_dict, resolve_utc
 
 PARIS_COORDS = {"latitude": 48.833056, "longitude": 2.326667}
+
+
+def test_birth_data_from_dict_local_time_form():
+    birth = birth_data_from_dict(
+        {
+            "name": "Anthony",
+            "latitude": 48.833056,
+            "longitude": 2.326667,
+            "local_date": "1970-11-20",
+            "local_time": "23:10:00",
+            "tz_name": "Europe/Paris",
+        }
+    )
+    assert birth == BirthData(
+        name="Anthony",
+        latitude=48.833056,
+        longitude=2.326667,
+        local_date=date(1970, 11, 20),
+        local_time=time(23, 10),
+        tz_name="Europe/Paris",
+    )
+
+
+def test_birth_data_from_dict_utc_form():
+    birth = birth_data_from_dict(
+        {
+            "name": "Trop ancien",
+            "latitude": 48.833056,
+            "longitude": 2.326667,
+            "utc_datetime": "1900-01-01T11:00:00+00:00",
+        }
+    )
+    assert birth.utc_datetime == datetime(1900, 1, 1, 11, 0, tzinfo=timezone.utc)
+    assert birth.local_date is None
 
 
 def test_resolve_utc_winter_cet():

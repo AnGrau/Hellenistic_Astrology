@@ -1,9 +1,8 @@
 import json
-from datetime import date, time
 from pathlib import Path
 
 from hellenistic_astrology.core.observation import Observation, PointPosition
-from hellenistic_astrology.core.timezone import BirthData
+from hellenistic_astrology.core.timezone import BirthData, birth_data_from_dict
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -19,15 +18,7 @@ def load_fixture(name: str) -> dict:
 
 
 def birth_data_from_fixture(fixture: dict) -> BirthData:
-    bd = fixture["birth_data"]
-    return BirthData(
-        name=bd["name"],
-        latitude=bd["latitude"],
-        longitude=bd["longitude"],
-        local_date=date.fromisoformat(bd["local_date"]),
-        local_time=time.fromisoformat(bd["local_time"]),
-        tz_name=bd["tz_name"],
-    )
+    return birth_data_from_dict(fixture["birth_data"])
 
 
 def assert_point_matches(actual: PointPosition, expected: dict, label: str) -> None:

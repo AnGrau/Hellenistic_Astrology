@@ -9,6 +9,9 @@ dependencies = [
     "python-docx>=1.2.0",
 ]
 
+[project.scripts]
+hellenistic-astrology = "hellenistic_astrology.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",

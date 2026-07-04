@@ -18,6 +18,22 @@ class BirthData:
     utc_datetime: datetime | None = None
 
 
+def birth_data_from_dict(data: dict) -> BirthData:
+    """Construit un BirthData depuis un dict JSON (name, latitude, longitude,
+    local_date/local_time/tz_name, ou utc_datetime en alternative)."""
+    return BirthData(
+        name=data["name"],
+        latitude=data["latitude"],
+        longitude=data["longitude"],
+        local_date=date.fromisoformat(data["local_date"]) if "local_date" in data else None,
+        local_time=time.fromisoformat(data["local_time"]) if "local_time" in data else None,
+        tz_name=data.get("tz_name"),
+        utc_datetime=(
+            datetime.fromisoformat(data["utc_datetime"]) if "utc_datetime" in data else None
+        ),
+    )
+
+
 def resolve_utc(birth: BirthData) -> datetime:
     if birth.utc_datetime is not None:
         return birth.utc_datetime
