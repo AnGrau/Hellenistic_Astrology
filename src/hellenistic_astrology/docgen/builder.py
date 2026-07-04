@@ -2,8 +2,8 @@ from datetime import datetime
 
 from docx import Document
 
-from ..core.aspects import ClusterAspect, SignCluster
-from ..core.dignities import MutualReception
+from ..core.aspects import ClusterAspect, SignCluster, sign_aspect
+from ..core.dignities import DOMICILES, MutualReception
 from ..core.houses import house_quality
 from ..core.observation import Observation, PointPosition
 from ..core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod, is_peak_period
@@ -56,6 +56,19 @@ DIGNITY_LABELS = {
 # référence — déjà promis en Phase 1 par CLAUDE.md, jamais implémenté avant
 # ce jalon.
 COMBUSTION_ORB_DEGREES = 15.0
+
+# Version courte de la dignité essentielle pour les phrases relationnelles
+# (Ascendant/maître, Luminaires...) — distincte de DIGNITY_LABELS ci-dessus
+# (utilisée dans les puces "Dignités et réceptions", qui gardent la
+# parenthèse "(détriment)" et le préfixe "En").
+DIGNITY_INLINE_CLAUSE = {
+    "Domicile": "en domicile",
+    "Exaltation": "en exaltation",
+    "Exil (détriment)": "en exil",
+    "Chute": "en chute",
+    "Pérégrin": "pérégrin",
+    "Pérégrine": "pérégrine",
+}
 
 
 def format_dms(decimal_degrees: float) -> str:
@@ -397,6 +410,80 @@ def add_dignities_and_receptions_section(document: Document, observation: Observ
         document.add_paragraph(f"Rétrogrades : {_join_french(retrogrades)}.", style="List Bullet")
 
 
+def _conjunction_clause(point: PointPosition, observation: Observation) -> str | None:
+    """« conjoint(e) à X, Y » pour les autres membres de l'amas de `point`
+    (lui-même exclu). None si `point` est seul dans son signe.
+
+    Réutilisable pour toute sous-section relationnelle (Ascendant/maître,
+    Luminaires, Nœuds et Parts) : un point conjoint à ses co-résidents de
+    signe s'exprime toujours de la même façon.
+    """
+    cluster = next(c for c in observation.clusters if c.sign == point.sign)
+    others = [m for m in cluster.members if m != point.name]
+    if not others:
+        return None
+    verb = "conjointe" if point.name in FEMININE_POINTS else "conjoint"
+    return f"{verb} à {_join_french([_display_name(m) for m in others])}"
+
+
+def _rulership_aspect_clause(ruler: PointPosition, governed_sign: str) -> str | None:
+    """Relation entre le signe de `ruler` et `governed_sign` (le signe qu'il
+    gouverne) — None si `ruler` est déjà dans ce signe (cas couvert par
+    `_conjunction_clause`, une aspect à soi-même n'aurait pas de sens).
+
+    Pas d'article devant `governed_sign` (simplification assumée : accorder
+    le genre/nombre des noms de signes en français — Gémeaux/Poissons
+    pluriels, Vierge/Balance féminins — ajouterait une table de genre inutile
+    ; cohérent avec `cluster_aspect_text`, Phase 1, qui n'en met pas non
+    plus). Le pronom "qu'il/qu'elle gouverne" s'accorde au genre du maître
+    (la planète, déjà dans FEMININE_PLANETS), pas du signe.
+    """
+    if ruler.sign == governed_sign:
+        return None
+    pronoun = "elle" if ruler.name in FEMININE_PLANETS else "il"
+    aspect = sign_aspect(ruler.sign, governed_sign)
+    return f"en {ASPECT_LABEL[aspect]} avec {governed_sign} qu'{pronoun} gouverne"
+
+
+def add_ascendant_and_ruler_section(document: Document, observation: Observation) -> None:
+    """Ascendant et son maître, en Phase 2 : première sous-section à décrire
+    une *relation* (pas seulement lister des faits) — voir `_conjunction_clause`
+    et `_rulership_aspect_clause`, conçues pour être réutilisées par les
+    sous-sections Luminaires et Nœuds et Parts à venir.
+    """
+    ascendant = observation.ascendant
+    ruler_name = next(planet for planet, signs in DOMICILES.items() if ascendant.sign in signs)
+    ruler = observation.planet(ruler_name)
+    rulership = next(r for r in observation.rulerships if r.planet == ruler_name)
+
+    ascendant_clause = _conjunction_clause(ascendant, observation) or "sans planète en maison 1"
+    document.add_paragraph(f"Ascendant en {ascendant.sign}, maison 1, {ascendant_clause}.")
+
+    regent_clause = (
+        "seul régent du" if len(rulership.domicile_signs) == 1 else "l'un des deux régents traditionnels du"
+    )
+    clauses = [DIGNITY_INLINE_CLAUSE[ruler.essential_dignity]]
+    ruler_conjunction = _conjunction_clause(ruler, observation)
+    if ruler_conjunction:
+        clauses.append(ruler_conjunction)
+    rulership_aspect = _rulership_aspect_clause(ruler, ascendant.sign)
+    if rulership_aspect:
+        clauses.append(rulership_aspect)
+    sentence = (
+        f"Maître de l'Ascendant : {ruler.name}, {regent_clause} {ascendant.sign}, "
+        f"situé en {ruler.sign}, maison {ruler.house}, {', '.join(clauses)}."
+    )
+    document.add_paragraph(sentence)
+
+    if len(rulership.domicile_signs) > 1:
+        other_house = next(
+            house
+            for sign, house in zip(rulership.domicile_signs, rulership.houses_governed)
+            if sign != ascendant.sign
+        )
+        document.add_paragraph(f"{ruler.name} régit également la maison {other_house}.")
+
+
 def build_observation_document(observation: Observation) -> Document:
     """Construit le document .docx : Phase 1 (Observation) complète, et les
     sous-sections de Phase 2 (Fiche technique) déjà couvertes par docgen
@@ -440,5 +527,8 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Dignités et réceptions", level=2)
     add_dignities_and_receptions_section(document, observation)
+
+    document.add_heading("Ascendant et son maître", level=2)
+    add_ascendant_and_ruler_section(document, observation)
 
     return document

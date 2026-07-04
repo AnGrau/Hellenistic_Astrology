@@ -6,7 +6,7 @@ import pytest
 from hellenistic_astrology.core import dignities as dignities_module
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
-from hellenistic_astrology.core.dignities import MutualReception, SolarProximity
+from hellenistic_astrology.core.dignities import MutualReception, Rulership, SolarProximity
 from hellenistic_astrology.core.observation import Observation, PointPosition
 from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod
 from hellenistic_astrology.docgen.builder import (
@@ -15,6 +15,7 @@ from hellenistic_astrology.docgen.builder import (
     RULERSHIPS_HEADER,
     ZODIACAL_RELEASING_HEADER,
     add_angularity_section,
+    add_ascendant_and_ruler_section,
     add_dignities_and_receptions_section,
     add_elemental_modal_section,
     add_minor_dignities_table,
@@ -287,6 +288,109 @@ def test_add_dignities_and_receptions_section_synthetic():
     ]
 
 
+def test_add_ascendant_and_ruler_section_single_domicile_with_aspect():
+    # Bélier n'est pas utilisé ici : maître (Soleil) à domicile unique, avec
+    # aspect (carré) entre son signe et celui de l'Ascendant, et conjonction
+    # des deux côtés — configuration proche d'Anthony (jalon 21).
+    ascendant = PointPosition(name="Ascendant", sign="Lion", degree_in_sign=0, house=1)
+    lune = PointPosition(name="Lune", sign="Lion", degree_in_sign=0, house=1)
+    soleil = PointPosition(
+        name="Soleil", sign="Scorpion", degree_in_sign=0, house=4, essential_dignity="Pérégrin"
+    )
+    venus = PointPosition(name="Vénus", sign="Scorpion", degree_in_sign=0, house=4)
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Taureau", degree_in_sign=0, house=10),
+        planets=[soleil, lune, venus],
+        rulerships=[Rulership(planet="Soleil", domicile_signs=("Lion",), houses_governed=(1,))],
+        clusters=[
+            SignCluster(sign="Lion", house=1, members=("Ascendant", "Lune")),
+            SignCluster(sign="Scorpion", house=4, members=("Soleil", "Vénus")),
+        ],
+    )
+    document = Document()
+
+    add_ascendant_and_ruler_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs[0] == "Ascendant en Lion, maison 1, conjoint à Lune."
+    assert paragraphs[1] == (
+        "Maître de l'Ascendant : Soleil, seul régent du Lion, situé en Scorpion, maison 4, "
+        "pérégrin, conjoint à Vénus, en carré avec Lion qu'il gouverne."
+    )
+    assert len(paragraphs) == 2  # pas de "régit également" : domicile unique.
+
+
+def test_add_ascendant_and_ruler_section_double_domicile_aversion_alone():
+    # Verseau : maître (Saturne) à double domicile, seul dans son signe (pas
+    # de conjonction), en aversion avec le signe qu'il gouverne — configuration
+    # proche de Liam pour la structure, mais aversion plutôt qu'opposition
+    # (cas non illustré par les documents de référence, à couvrir ici).
+    ascendant = PointPosition(name="Ascendant", sign="Verseau", degree_in_sign=0, house=1)
+    saturne = PointPosition(
+        name="Saturne", sign="Poissons", degree_in_sign=0, house=2, essential_dignity="Pérégrin"
+    )
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Scorpion", degree_in_sign=0, house=10),
+        planets=[saturne],
+        rulerships=[
+            Rulership(planet="Saturne", domicile_signs=("Capricorne", "Verseau"), houses_governed=(12, 1))
+        ],
+        clusters=[
+            SignCluster(sign="Verseau", house=1, members=("Ascendant",)),
+            SignCluster(sign="Poissons", house=2, members=("Saturne",)),
+        ],
+    )
+    document = Document()
+
+    add_ascendant_and_ruler_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs[0] == "Ascendant en Verseau, maison 1, sans planète en maison 1."
+    assert paragraphs[1] == (
+        "Maître de l'Ascendant : Saturne, l'un des deux régents traditionnels du Verseau, "
+        "situé en Poissons, maison 2, pérégrin, en aversion avec Verseau qu'il gouverne."
+    )
+    assert paragraphs[2] == "Saturne régit également la maison 12."
+
+
+def test_add_ascendant_and_ruler_section_ruler_in_ascendant_sign():
+    # Le maître est dans le signe de l'Ascendant lui-même : pas de clause
+    # d'aspect (déjà couverte par la conjonction), mais "régit également"
+    # reste présent (double domicile).
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    mars = PointPosition(
+        name="Mars", sign="Bélier", degree_in_sign=0, house=1, essential_dignity="Domicile"
+    )
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10),
+        planets=[mars],
+        rulerships=[
+            Rulership(planet="Mars", domicile_signs=("Bélier", "Scorpion"), houses_governed=(1, 8))
+        ],
+        clusters=[SignCluster(sign="Bélier", house=1, members=("Ascendant", "Mars"))],
+    )
+    document = Document()
+
+    add_ascendant_and_ruler_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs[0] == "Ascendant en Bélier, maison 1, conjoint à Mars."
+    assert paragraphs[1] == (
+        "Maître de l'Ascendant : Mars, l'un des deux régents traditionnels du Bélier, "
+        "situé en Bélier, maison 1, en domicile, conjoint à l'Ascendant."
+    )
+    assert paragraphs[2] == "Mars régit également la maison 8."
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -371,10 +475,11 @@ def test_build_observation_document_structure(fixture_name):
         )
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
-    assert heading2_texts[-3:] == [
+    assert heading2_texts[-4:] == [
         "Répartition élémentaire et modale",
         "Angularité",
         "Dignités et réceptions",
+        "Ascendant et son maître",
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
@@ -460,3 +565,31 @@ def test_build_observation_document_structure(fixture_name):
     )
     angularity_paragraph = next(p for p in all_paragraphs[angularity_index + 1 :] if p.text)
     assert angularity_paragraph.text == expected_angular_sentence[fixture_name]
+
+    # "Ascendant et son maître" recoupé mot pour mot contre le texte réel des
+    # deux documents, à l'ordre signe/maison près (retenu : signe puis maison,
+    # voir CLAUDE.md jalon 21) et à la relation maître↔Ascendant près pour
+    # Anthony (omise dans le document d'origine, toujours incluse ici).
+    expected_ascendant_paragraphs = {
+        "anthony": [
+            "Ascendant en Lion, maison 1, conjoint à Lune et Nœud Sud.",
+            "Maître de l'Ascendant : Soleil, seul régent du Lion, situé en Scorpion, maison 4, "
+            "pérégrin, conjoint à Vénus, Jupiter et la Part de Fortune, en carré avec Lion qu'il gouverne.",
+        ],
+        "liam": [
+            "Ascendant en Verseau, maison 1, sans planète en maison 1.",
+            "Maître de l'Ascendant : Saturne, l'un des deux régents traditionnels du Verseau, "
+            "situé en Lion, maison 7, en exil, conjoint à la Part de Fortune, "
+            "en opposition avec Verseau qu'il gouverne.",
+            "Saturne régit également la maison 12.",
+        ],
+    }
+    ascendant_heading_index = next(
+        i
+        for i, p in enumerate(all_paragraphs)
+        if p.style.name == "Heading 2" and p.text == "Ascendant et son maître"
+    )
+    ascendant_paragraphs = [
+        p.text for p in all_paragraphs[ascendant_heading_index + 1 :] if p.text
+    ]
+    assert ascendant_paragraphs == expected_ascendant_paragraphs[fixture_name]
