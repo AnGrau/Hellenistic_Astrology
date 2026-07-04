@@ -4,6 +4,7 @@ from docx import Document
 
 from ..core.aspects import ClusterAspect, SignCluster
 from ..core.dignities import MutualReception
+from ..core.houses import house_quality
 from ..core.observation import Observation, PointPosition
 from ..core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod, is_peak_period
 from . import styles
@@ -221,12 +222,108 @@ def add_aspects_section(document: Document, observation: Observation) -> None:
         document.add_paragraph(mutual_reception_text(reception), style="List Bullet")
 
 
-def build_observation_document(observation: Observation) -> Document:
-    """Construit le document .docx pour la Phase 1 (Observation) uniquement.
+def _distribution_points(observation: Observation) -> list[PointPosition]:
+    """Le jeu de points utilisé pour la répartition élémentaire/modale et
+    l'angularité (Phase 2) : Ascendant + 7 planètes + Nœud Nord + les 3
+    Parts, à l'exclusion du Milieu du Ciel et du Nœud Sud. Convention déduite
+    par inspection croisée des deux documents de référence, qui l'appliquent
+    tous les deux identiquement sans jamais l'expliciter."""
+    excluded = {"Milieu du Ciel", "Nœud Sud"}
+    return [p for p in observation.all_points if p.name not in excluded]
 
-    Les phases 2 (fiche technique) et 3 (interprétation) impliquent une
-    rédaction descriptive qui dépasse le périmètre de docgen : docgen ne
-    fait que mettre en forme des données déjà calculées.
+
+def add_elemental_modal_section(document: Document, observation: Observation) -> None:
+    """Répartition élémentaire (Ascendant/Soleil/Lune) et modale (les 12
+    points de `_distribution_points`), en Phase 2.
+
+    Rendu volontairement plus simple, en style « libellé technique », que la
+    prose des documents de référence (qui emploie un jugement qualitatif —
+    « dominante fixe », « suivie de près par » — ne généralisant pas
+    proprement à un comptage arbitraire, et une accord grammatical
+    singulier/pluriel qui ajouterait de la fragilité pour peu de gain) :
+    même choix que le jalon 4 pour les puces d'aspects.
+    """
+    points = _distribution_points(observation)
+    main_points = [observation.ascendant, observation.planet("Soleil"), observation.planet("Lune")]
+    main_names = {"Ascendant", "Soleil", "Lune"}
+
+    # Liste à virgules simples (pas de "et" final) : convention des documents
+    # de référence pour ce type d'énumération positionnelle, distincte de la
+    # jonction "et" utilisée par _join_french pour les puces d'aspects.
+    main_elements_text = ", ".join(
+        f"{p.name} en {p.element.lower()} ({p.sign})" for p in main_points
+    )
+    present_among_main = {p.element for p in main_points}
+    missing_elements = sorted({"Feu", "Terre", "Air", "Eau"} - present_among_main)
+    other_points = [p for p in points if p.name not in main_names]
+    elements_elsewhere = {p.element for p in other_points}
+    present_elsewhere = [e for e in missing_elements if e in elements_elsewhere]
+    absent_entirely = [e for e in missing_elements if e not in elements_elsewhere]
+
+    def _lower_list(elements: list[str]) -> str:
+        return _join_french([e.lower() for e in elements]) if elements else "aucun"
+
+    document.add_paragraph(
+        f"Éléments des trois points directeurs : {main_elements_text}. "
+        f"Éléments absents de ces trois points : {_lower_list(missing_elements)}. "
+        f"Présents ailleurs dans le thème : {_lower_list(present_elsewhere)}. "
+        f"Absents de l'ensemble du thème : {_lower_list(absent_entirely)}."
+    )
+
+    modality_groups: dict[str, list[PointPosition]] = {"Cardinal": [], "Fixe": [], "Mutable": []}
+    for p in points:
+        modality_groups[p.modality].append(p)
+    ordered_modalities = sorted(modality_groups.items(), key=lambda kv: -len(kv[1]))
+
+    modality_sentences = []
+    for modality, members in ordered_modalities:
+        count = len(members)
+        names = _join_french([p.name for p in members]) if members else "aucun facteur"
+        modality_sentences.append(f"{modality} : {names} ({count} facteur{'s' if count != 1 else ''}).")
+    document.add_paragraph(
+        "Modalité, par ordre décroissant de nombre de facteurs : " + " ".join(modality_sentences)
+    )
+
+
+def add_angularity_section(document: Document, observation: Observation) -> None:
+    """Angularité (maisons angulaires 1/4/7/10) des 12 points de
+    `_distribution_points`, en Phase 2. Structure identique dans les deux
+    documents de référence, reproduite fidèlement — à l'exception du nom
+    complet « le Soleil » employé une fois dans le document de Liam, non
+    repris ici : incohérent avec la convention déjà établie et testée en
+    Phase 1 (`DISPLAY_NAME_WITH_ARTICLE`), qui n'ajoute pas d'article aux
+    luminaires/planètes.
+    """
+    points = _distribution_points(observation)
+    by_house: dict[int, list[PointPosition]] = {}
+    for p in points:
+        by_house.setdefault(p.house, []).append(p)
+
+    angular_sentences = [
+        f"Maison {house} : {', '.join(p.name for p in by_house[house])}."
+        for house in (1, 4, 7, 10)
+        if by_house.get(house)
+    ]
+    document.add_paragraph(" ".join(angular_sentences))
+
+    non_angular_houses = [h for h in by_house if h not in (1, 4, 7, 10)]
+    if non_angular_houses:
+        groups = [
+            f"{_join_french([_display_name(p.name) for p in by_house[house]])} "
+            f"(maison {house}, {house_quality(house).lower()})"
+            for house in non_angular_houses
+        ]
+        document.add_paragraph("Hors angularité : " + ", ".join(groups) + ".")
+
+
+def build_observation_document(observation: Observation) -> Document:
+    """Construit le document .docx : Phase 1 (Observation) complète, et les
+    sous-sections de Phase 2 (Fiche technique) déjà couvertes par docgen
+    (voir CLAUDE.md pour l'état d'avancement exact).
+
+    Phase 3 (Interprétation) et le reste de la Phase 2 impliquent une
+    rédaction descriptive qui dépasse encore le périmètre de docgen : docgen
+    ne fait que mettre en forme des données déjà calculées.
     """
     document = Document()
     document.add_heading("Phase 1 — Observation", level=1)
@@ -251,5 +348,13 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Libération zodiacale — Part de l'Esprit", level=2)
     add_zodiacal_releasing_table(document, observation.zodiacal_releasing_spirit, fortune_sign)
+
+    document.add_heading("Phase 2 — Fiche technique", level=1)
+
+    document.add_heading("Répartition élémentaire et modale", level=2)
+    add_elemental_modal_section(document, observation)
+
+    document.add_heading("Angularité", level=2)
+    add_angularity_section(document, observation)
 
     return document

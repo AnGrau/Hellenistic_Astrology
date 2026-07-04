@@ -11,6 +11,13 @@ class PointPosition:
     sign: str
     degree_in_sign: float
     house: int
+    # Métadonnées géométriques universelles (calculées pour tous les points,
+    # contrairement aux dignités ci-dessous qui ne concernent que les
+    # planètes classiques) : élément (réutilise dignities.SIGN_TRIPLICITY),
+    # modalité (houses.MODALITY_BY_SIGN) et angularité (houses.house_quality).
+    element: str | None = None
+    modality: str | None = None
+    house_quality: str | None = None
     retrograde: bool | None = None
     essential_dignity: str | None = None
     triplicity_dignity: str | None = None

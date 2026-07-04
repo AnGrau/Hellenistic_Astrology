@@ -42,11 +42,19 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         sect_role: str | None = None,
         speed: float | None = None,
     ) -> PointPosition:
+        sign = houses.sign_name(longitude)
+        house = houses.whole_sign_house(longitude, ascendant_lon)
         return PointPosition(
             name=name,
-            sign=houses.sign_name(longitude),
+            sign=sign,
             degree_in_sign=houses.degree_in_sign(longitude),
-            house=houses.whole_sign_house(longitude, ascendant_lon),
+            house=house,
+            # Réutilise dignities.SIGN_TRIPLICITY comme table sign -> élément
+            # (déjà utilisée pour la triplicité) : universel, contrairement
+            # aux dignités ci-dessous qui ne concernent que les planètes.
+            element=dignities.SIGN_TRIPLICITY[sign],
+            modality=houses.MODALITY_BY_SIGN[sign],
+            house_quality=houses.house_quality(house),
             retrograde=retrograde,
             essential_dignity=essential_dignity,
             triplicity_dignity=triplicity_dignity,

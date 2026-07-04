@@ -43,4 +43,4 @@ uv run hellenistic-astrology naissance.json
 
 Le `.docx` est écrit dans `output/<nom>.docx` par défaut (dossier gitignored, contient des données personnelles), ou vers le chemin donné avec `-o`/`--output`.
 
-Le document généré ne couvre pour l'instant que la Phase 1 (Observation : positions — y compris Nœud Nord/Sud et Part d'Éros —, maîtrises traditionnelles, dignités mineures — triplicité, bornes égyptiennes, décans —, aspects par signe, réceptions mutuelles par domicile, libération zodiacale niveaux L1+L2 sur 100 ans depuis la Part de Fortune et la Part de l'Esprit) — voir "Reste à faire" dans `CLAUDE.md`.
+Le document généré couvre la Phase 1 complète (Observation : positions — y compris Nœud Nord/Sud et Part d'Éros —, maîtrises traditionnelles, dignités mineures — triplicité, bornes égyptiennes, décans —, aspects par signe, réceptions mutuelles par domicile, libération zodiacale niveaux L1+L2 sur 100 ans depuis la Part de Fortune et la Part de l'Esprit) ainsi que les premières sous-sections de la Phase 2 (Fiche technique : répartition élémentaire et modale, angularité) — voir "Reste à faire" dans `CLAUDE.md` pour le reste de la Phase 2 et la Phase 3.

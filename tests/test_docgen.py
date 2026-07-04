@@ -14,6 +14,8 @@ from hellenistic_astrology.docgen.builder import (
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
     ZODIACAL_RELEASING_HEADER,
+    add_angularity_section,
+    add_elemental_modal_section,
     add_minor_dignities_table,
     add_zodiacal_releasing_table,
     build_observation_document,
@@ -161,6 +163,79 @@ def test_add_zodiacal_releasing_table_rows_and_peak_marking():
     assert l2_row == ["L2", "Vierge", "Mercure", "01/01/2000", "01/08/2001", "—"]
 
 
+def test_add_elemental_modal_and_angularity_sections_synthetic():
+    # Nœud Sud et Milieu du Ciel présents dans all_points mais doivent être
+    # exclus des deux sections (convention des 12 points, voir CLAUDE.md
+    # jalon 19) : inclus ici justement pour vérifier qu'ils sont bien ignorés.
+    ascendant = PointPosition(
+        name="Ascendant", sign="Bélier", degree_in_sign=0, house=1,
+        element="Feu", modality="Cardinal", house_quality="Angulaire",
+    )
+    soleil = PointPosition(
+        name="Soleil", sign="Lion", degree_in_sign=0, house=4,
+        element="Feu", modality="Fixe", house_quality="Angulaire",
+    )
+    lune = PointPosition(
+        name="Lune", sign="Cancer", degree_in_sign=0, house=1,
+        element="Eau", modality="Cardinal", house_quality="Angulaire",
+    )
+    mercure = PointPosition(
+        name="Mercure", sign="Vierge", degree_in_sign=0, house=2,
+        element="Terre", modality="Mutable", house_quality="Succédente",
+    )
+    north_node = PointPosition(
+        name="Nœud Nord", sign="Balance", degree_in_sign=0, house=3,
+        element="Air", modality="Cardinal", house_quality="Cadente",
+    )
+    south_node = PointPosition(
+        name="Nœud Sud", sign="Bélier", degree_in_sign=0, house=1,
+        element="Feu", modality="Cardinal", house_quality="Angulaire",
+    )
+    midheaven = PointPosition(
+        name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10,
+        element="Terre", modality="Cardinal", house_quality="Angulaire",
+    )
+    fortune = PointPosition(
+        name="Part de Fortune", sign="Scorpion", degree_in_sign=0, house=3,
+        element="Eau", modality="Fixe", house_quality="Cadente",
+    )
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=midheaven,
+        planets=[soleil, lune, mercure],
+        part_of_fortune=fortune,
+        north_node=north_node,
+        south_node=south_node,
+        all_points=[ascendant, soleil, lune, mercure, north_node, south_node, midheaven, fortune],
+    )
+    document = Document()
+
+    add_elemental_modal_section(document, observation)
+    add_angularity_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs[0] == (
+        "Éléments des trois points directeurs : Ascendant en feu (Bélier), "
+        "Soleil en feu (Lion), Lune en eau (Cancer). "
+        "Éléments absents de ces trois points : air et terre. "
+        "Présents ailleurs dans le thème : air et terre. "
+        "Absents de l'ensemble du thème : aucun."
+    )
+    assert paragraphs[1] == (
+        "Modalité, par ordre décroissant de nombre de facteurs : "
+        "Cardinal : Ascendant, Lune et Nœud Nord (3 facteurs). "
+        "Fixe : Soleil et Part de Fortune (2 facteurs). "
+        "Mutable : Mercure (1 facteur)."
+    )
+    assert paragraphs[2] == "Maison 1 : Ascendant, Lune. Maison 4 : Soleil."
+    assert paragraphs[3] == (
+        "Hors angularité : Mercure (maison 2, succédente), "
+        "Nœud Nord et la Part de Fortune (maison 3, cadente)."
+    )
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -169,7 +244,8 @@ def test_build_observation_document_structure(fixture_name):
     document = build_observation_document(observation)
 
     assert [p.text for p in document.paragraphs if p.style.name == "Heading 1"] == [
-        "Phase 1 — Observation"
+        "Phase 1 — Observation",
+        "Phase 2 — Fiche technique",
     ]
     assert len(document.tables) == 5
 
@@ -245,11 +321,13 @@ def test_build_observation_document_structure(fixture_name):
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
     assert heading2_texts[-2:] == [
-        "Libération zodiacale — Part de Fortune",
-        "Libération zodiacale — Part de l'Esprit",
+        "Répartition élémentaire et modale",
+        "Angularité",
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
+    assert "Libération zodiacale — Part de Fortune" in heading2_texts
+    assert "Libération zodiacale — Part de l'Esprit" in heading2_texts
 
     # Recoupe le rendu docgen contre le même calcul core.zodiacal_releasing,
     # sur la position réellement calculée (pas la fixture, qui ne documente
@@ -294,3 +372,29 @@ def test_build_observation_document_structure(fixture_name):
 
     actual_bullets = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
     assert actual_bullets == expected_bullets
+
+    # La phrase "Maison N : ..." est reproduite mot pour mot contre le texte
+    # réel des documents de référence (seule sous-section de Phase 2 dont la
+    # structure est validée identique dans les deux documents ; Anthony omet
+    # le Milieu du Ciel de la maison 10 ici, contrairement au document
+    # d'origine — voir CLAUDE.md jalon 19 pour la justification de cette
+    # divergence assumée). La phrase "Hors angularité" n'est *pas* reproduite
+    # mot pour mot (simplifications assumées, voir CLAUDE.md).
+    expected_angular_sentence = {
+        "anthony": (
+            "Maison 1 : Ascendant, Lune. Maison 4 : Soleil, Vénus, Jupiter, Part de Fortune. "
+            "Maison 7 : Nœud Nord, Part d'Éros. Maison 10 : Saturne, Part de l'Esprit."
+        ),
+        "liam": (
+            "Maison 1 : Ascendant. Maison 4 : Lune, Mars. Maison 7 : Saturne, Part de Fortune. "
+            "Maison 10 : Mercure."
+        ),
+    }
+    all_paragraphs = list(document.paragraphs)
+    angularity_index = next(
+        i
+        for i, p in enumerate(all_paragraphs)
+        if p.style.name == "Heading 2" and p.text == "Angularité"
+    )
+    angularity_paragraph = next(p for p in all_paragraphs[angularity_index + 1 :] if p.text)
+    assert angularity_paragraph.text == expected_angular_sentence[fixture_name]
