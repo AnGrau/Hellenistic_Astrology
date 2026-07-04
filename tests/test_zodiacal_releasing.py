@@ -6,6 +6,7 @@ from hellenistic_astrology.core.timezone import resolve_utc
 from hellenistic_astrology.core.zodiacal_releasing import (
     SIGN_RULERS,
     ZODIACAL_RELEASING_YEARS,
+    ReleasingPeriod,
     active_period,
     angular_signs_from,
     is_peak_period,
@@ -106,6 +107,90 @@ def test_sub_periods_wrap_around_the_zodiac_more_than_once():
     children = sub_periods(parent)
     signs_seen = [c.sign for c in children]
     assert signs_seen.count("Verseau") >= 2
+
+
+# Relâchement du lien ("loosing of the bond") : le signe de destination
+# (opposé au signe de départ, pas au dernier signe visité) était un point non
+# résolu de "Reste à faire" — tranché par plusieurs sources indépendantes
+# (Mountain Astrologer, The Astrology Podcast/lignée Brennan) et confirmé,
+# à la date et au signe exacts, par calcul direct sur les deux thèmes de
+# référence (non documenté dans les .docx, qui ne couvrent pas cette
+# technique — voir CLAUDE.md).
+# Un tour complet des 12 signes totalise toujours 211 "années" (somme de
+# ZODIACAL_RELEASING_YEARS), quel que soit le signe de départ : à l'unité du
+# niveau 2 (mois de 30 jours), cela fait 211*30 = 6330 jours (~17,3 ans).
+FULL_CYCLE_UNITS = 211
+
+
+def test_level_periods_loosing_of_the_bond_jumps_to_opposite_of_start_sign():
+    # Verseau (30 ans) : un tour complet des 12 signes (~17,4 ans) tient
+    # largement dedans. Après les 12 signes du premier tour (index 0-11), le
+    # 13e doit être Lion (opposé de Verseau), pas Verseau lui-même : Verseau
+    # ne réapparaît donc jamais deux fois de suite dans la séquence.
+    periods = level_periods(
+        2, "Verseau", datetime(2000, 1, 1), timedelta(days=(FULL_CYCLE_UNITS + 60) * 30)
+    )
+    signs = [p.sign for p in periods]
+    assert signs[:12] == [
+        "Verseau", "Poissons", "Bélier", "Taureau", "Gémeaux", "Cancer",
+        "Lion", "Vierge", "Balance", "Scorpion", "Sagittaire", "Capricorne",
+    ]
+    assert signs[12] == "Lion"
+    assert periods[12].bond_loosed is True
+    assert "Verseau" not in signs[1:]
+
+
+def test_level_periods_bond_loosed_flag_only_on_the_jump_period():
+    periods = level_periods(
+        2, "Verseau", datetime(2000, 1, 1), timedelta(days=(FULL_CYCLE_UNITS + 60) * 30)
+    )
+    loosed = [p for p in periods if p.bond_loosed]
+    assert len(loosed) == 1
+    assert loosed[0].sign == "Lion"
+
+
+def test_level_periods_no_loosing_when_start_sign_never_repeats():
+    # Bélier (15 ans) : plus court qu'un tour complet (~17,4 ans), Bélier ne
+    # réapparaît jamais -> aucun relâchement du lien.
+    periods = level_periods(2, "Bélier", datetime(2000, 1, 1), timedelta(days=15 * 30))
+    assert all(not p.bond_loosed for p in periods)
+    assert [p.sign for p in periods] == ["Bélier"]
+
+
+def test_level_periods_loosing_applies_recursively_at_any_level():
+    # Même mécanisme, appelé à un niveau plus profond (L3 dans un contexte
+    # L2) : pas de code spécifique au niveau, `level_periods` est la même
+    # fonction à tous les niveaux. Unité du niveau 3 (2,5 jours) : un tour
+    # complet fait 211*2,5 = 527,5 jours.
+    periods = level_periods(
+        3, "Verseau", datetime(2000, 1, 1), timedelta(days=(FULL_CYCLE_UNITS + 60) * 2.5)
+    )
+    signs = [p.sign for p in periods]
+    assert signs[12] == "Lion"
+    assert periods[12].bond_loosed is True
+
+
+@pytest.mark.parametrize(
+    "l1_sign, l1_start, l1_end, expected_jump_date, expected_destination",
+    [
+        # Anthony, Part de Fortune (Capricorne, non documenté dans le .docx,
+        # qui ne détaille pas l'historique de libération zodiacale) :
+        # bouclage exact le 30/10/2014, saut vers le Cancer (opposé du
+        # Capricorne) — dates et signe confirmés par calcul direct.
+        ("Capricorne", datetime(1997, 7, 1), datetime(2024, 2, 10), datetime(2014, 10, 30), "Cancer"),
+        # Liam, Part de Fortune (Lion) : bouclage exact le 17/02/2023, saut
+        # vers le Verseau (opposé du Lion).
+        ("Lion", datetime(2005, 10, 19), datetime(2024, 7, 11), datetime(2023, 2, 17), "Verseau"),
+    ],
+)
+def test_loosing_of_the_bond_reference_charts_fortune(
+    l1_sign, l1_start, l1_end, expected_jump_date, expected_destination
+):
+    parent = ReleasingPeriod(level=1, sign=l1_sign, ruler=SIGN_RULERS[l1_sign], start=l1_start, end=l1_end)
+    children = sub_periods(parent)
+    loosed = next(p for p in children if p.bond_loosed)
+    assert loosed.start == expected_jump_date
+    assert loosed.sign == expected_destination
 
 
 def test_sub_periods_of_level_4_raises():

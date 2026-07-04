@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from .dignities import DOMICILES
+from .dignities import DOMICILES, opposite_sign
 from .houses import SIGNS, index_of_sign
 
 # Années fixes de la libération zodiacale (Vettius Valens, Anthologiae),
@@ -54,6 +54,12 @@ class ReleasingPeriod:
     ruler: str
     start: datetime
     end: datetime
+    # True si cette période est celle qui a immédiatement suivi un
+    # relâchement du lien (voir `level_periods`) : le signe attendu par la
+    # simple continuation du cycle a été remplacé par le signe opposé au
+    # signe de départ. False dans tous les autres cas, y compris pour les
+    # occurrences ultérieures normales de ce même signe opposé.
+    bond_loosed: bool = False
 
 
 def _next_sign(sign: str) -> str:
@@ -91,6 +97,42 @@ def level_periods(level: int, start_sign: str, start: datetime, duration: timede
     niveau parent dépasse presque toujours la somme d'un tour complet des 12
     signes à l'unité du niveau courant). La dernière période est tronquée
     pour s'arrêter exactement à `start + duration`.
+
+    Relâchement du lien ("loosing of the bond", Vettius Valens via Chris
+    Brennan) : si le cycle des 12 signes revient sur `start_sign` avant la
+    fin de `duration`, la période suivante saute au signe **opposé** à
+    `start_sign` plutôt que de le répéter, puis l'ordre zodiacal normal
+    reprend à partir de là (`_next_sign`). Cette structure de "Reste à
+    faire" attendait une source qui tranche : un tour complet des 12 signes
+    totalise toujours ~17,4 ans à l'unité du niveau courant (211 "années" de
+    la table `ZODIACAL_RELEASING_YEARS`, quel que soit le signe de départ),
+    donc seuls les signes dont la durée propre dépasse ce seuil (Gémeaux,
+    Cancer, Lion, Vierge, Capricorne, Verseau — maîtrisés par
+    Mercure/Lune/Soleil/Saturne) peuvent effectivement boucler ; ceci émerge
+    naturellement de la boucle ci-dessous, pas d'un seuil codé en dur.
+    Vérifié contre plusieurs sources indépendantes et cohérentes entre elles
+    (Mountain Astrologer, qui donne exactement l'exemple Capricorne -> ... ->
+    Sagittaire -> [saut] Cancer ; The Astrology Podcast/lignée Brennan) et
+    confirmé, à la date et au signe exacts, par les deux thèmes de référence
+    pour la Part de Fortune (non documenté dans les `.docx`, mais recoupé par
+    calcul direct) : Anthony (Capricorne L1 1997-07-01 -> 2024-02-10) boucle
+    exactement le 2014-10-30 et saute vers le Cancer (opposé du Capricorne) ;
+    Liam (Lion L1 2005-10-19 -> 2024-07-11) boucle exactement le 2023-02-17
+    et saute vers le Verseau (opposé du Lion). Le blog aswinsubramanyan.com
+    (déjà cité comme source pour la lignée Schmidt) indique à l'inverse un
+    saut vers l'opposé du **dernier signe visité** — contredit par les deux
+    sources ci-dessus et par les deux dates/signes vérifiés : traité comme
+    une erreur de cette source, pas comme une variante légitime à arbitrer.
+    S'applique récursivement à chaque niveau (L2 dans L1, L3 dans L2, L4
+    dans L3), confirmé par les mêmes sources ("can also occur on L3 and
+    L4") : automatique ici puisque `sub_periods`/`releasing_tree` appellent
+    tous cette même fonction. Le drapeau `bond_loosed` n'autorise le saut
+    qu'une seule fois par appel : après le saut, un second passage naturel
+    par `start_sign` peut survenir bien avant qu'un tour complet (~17,4 ans)
+    ne soit à nouveau écoulé depuis le saut (ce n'est pas une deuxième
+    boucle, juste la suite normale de la séquence) — et aucun signe de la
+    table n'est de toute façon assez long (max 30 ans) pour qu'un deuxième
+    tour complet tienne après le premier saut.
     """
     if not 1 <= level <= MAX_LEVEL:
         raise ValueError(f"level doit être entre 1 et {MAX_LEVEL} : {level}")
@@ -100,14 +142,29 @@ def level_periods(level: int, start_sign: str, start: datetime, duration: timede
     periods = []
     sign = start_sign
     cursor = start
+    bond_loosed = False
+    just_loosed = False
     while cursor < end:
         length = timedelta(days=ZODIACAL_RELEASING_YEARS[sign] * days_per_unit)
         period_end = min(cursor + length, end)
         periods.append(
-            ReleasingPeriod(level=level, sign=sign, ruler=SIGN_RULERS[sign], start=cursor, end=period_end)
+            ReleasingPeriod(
+                level=level,
+                sign=sign,
+                ruler=SIGN_RULERS[sign],
+                start=cursor,
+                end=period_end,
+                bond_loosed=just_loosed,
+            )
         )
         cursor = period_end
-        sign = _next_sign(sign)
+        just_loosed = False
+        next_sign = _next_sign(sign)
+        if next_sign == start_sign and not bond_loosed:
+            next_sign = opposite_sign(start_sign)
+            bond_loosed = True
+            just_loosed = True
+        sign = next_sign
     return periods
 
 
