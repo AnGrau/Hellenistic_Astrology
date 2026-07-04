@@ -78,16 +78,32 @@ def _figure_to_png_bytes(fig) -> bytes:
     return buffer.read()
 
 
+def _wheel_theta(longitude_degrees: float, ascendant_longitude: float) -> float:
+    """Angle matplotlib (radians) pour une longitude écliptique donnée,
+    dans un repère ancré sur l'Ascendant plutôt que sur le zodiaque fixe :
+    convention universelle des roues de thème (Astro.com, Astro-Seek,
+    Solar Fire...) — Ascendant toujours à gauche (9h, horizontal),
+    Descendant à droite (3h), maisons dans l'ordre zodiacal en tournant
+    dans le sens anti-horaire. Avec `theta_zero_location("E")` et
+    `theta_direction(1)` (sens trigonométrique standard), un décalage de
+    +180° place la longitude de l'Ascendant lui-même à l'Ouest (gauche)."""
+    return np.radians((longitude_degrees - ascendant_longitude + 180) % 360)
+
+
 def render_chart_wheel(observation: Observation) -> bytes:
     """Roue du thème : 12 secteurs de signe (teinte par élément, réutilise
     `dignities.SIGN_TRIPLICITY`), glyphes de signe et de point placés par
     longitude réelle (`houses.longitude_of`), numéros de maison (whole
-    sign, réutilise `houses.whole_sign_house`), Ascendant/Milieu du Ciel
-    marqués par une ligne radiale distincte, lignes d'aspect entre amas
+    sign, réutilise `houses.whole_sign_house`), les quatre angles
+    (Ascendant/Descendant/Milieu du Ciel/Fond du Ciel) marqués par une
+    ligne radiale distincte, lignes d'aspect entre amas
     (`observation.cluster_aspects`, aversions exclues) tracées à l'angle
     médian de chaque signe — fidèle à la méthodologie du projet (aspects
     par signe entre amas, pas des aspects degré-précis entre planètes
-    individuelles)."""
+    individuelles). Le repère est ancré sur l'Ascendant (`_wheel_theta`),
+    pas sur le zodiaque fixe : Ascendant/Descendant toujours horizontaux,
+    Milieu du Ciel/Fond du Ciel à leur position réelle (qui dépend de la
+    latitude, comme en whole-sign — pas nécessairement en haut/en bas)."""
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="polar")
     ax.set_theta_zero_location("E")
@@ -102,7 +118,7 @@ def render_chart_wheel(observation: Observation) -> bytes:
 
     # Secteurs de signe (teinte par élément) + glyphes + numéros de maison.
     for i, sign in enumerate(SIGNS):
-        theta_center = np.radians(i * 30 + 15)
+        theta_center = _wheel_theta(i * 30 + 15, ascendant_longitude)
         color = ELEMENT_COLORS[SIGN_TRIPLICITY[sign]]
         ax.bar(
             theta_center, 1.0 - _SIGN_RING_INNER, width=np.radians(30), bottom=_SIGN_RING_INNER,
@@ -118,7 +134,7 @@ def render_chart_wheel(observation: Observation) -> bytes:
     ax.plot(theta_full, [_SIGN_RING_INNER] * 200, color="black", linewidth=0.8)
     ax.plot(theta_full, [_ASPECT_HUB_RADIUS] * 200, color="gray", linewidth=0.5, alpha=0.6)
     for i in range(12):
-        theta = np.radians(i * 30)
+        theta = _wheel_theta(i * 30, ascendant_longitude)
         ax.plot([theta, theta], [_SIGN_RING_INNER, 1.0], color="black", linewidth=0.6)
 
     # Points, groupés par amas pour étager le rayon et éviter le
@@ -130,17 +146,27 @@ def render_chart_wheel(observation: Observation) -> bytes:
         members = [m for m in cluster.members if m not in excluded_from_dots]
         for idx, name in enumerate(members):
             point = points_by_name[name]
-            theta = np.radians(longitude_of(point.sign, point.degree_in_sign))
+            theta = _wheel_theta(longitude_of(point.sign, point.degree_in_sign), ascendant_longitude)
             radius = _POINT_BASE_RADIUS - idx * _POINT_RADIUS_STEP
             label = POINT_GLYPHS.get(name) or POINT_LABELS.get(name, name[:4])
             fontsize = 12 if name in POINT_GLYPHS else 8
             ax.plot(theta, radius, "o", color="#2E3B4E", markersize=4)
             ax.text(theta, radius + 0.06, label, ha="center", va="center", fontsize=fontsize, color="#2E3B4E")
 
-    # Ascendant et Milieu du Ciel : ligne radiale distincte plutôt qu'un
+    # Les quatre angles : Ascendant/Descendant et Milieu du Ciel/Fond du
+    # Ciel sont chacun deux points diamétralement opposés (+180° de
+    # longitude écliptique) — géométrie pure, pas un nouveau calcul
+    # astrologique indépendant. Ligne radiale distincte plutôt qu'un
     # glyphe de planète (convention usuelle des roues de thème).
-    for point, label in ((observation.ascendant, "AC"), (observation.midheaven, "MC")):
-        theta = np.radians(longitude_of(point.sign, point.degree_in_sign))
+    midheaven_longitude = longitude_of(observation.midheaven.sign, observation.midheaven.degree_in_sign)
+    angles = [
+        (ascendant_longitude, "AC"),
+        ((ascendant_longitude + 180) % 360, "DC"),
+        (midheaven_longitude, "MC"),
+        ((midheaven_longitude + 180) % 360, "IC"),
+    ]
+    for longitude, label in angles:
+        theta = _wheel_theta(longitude, ascendant_longitude)
         ax.plot([theta, theta], [0, _SIGN_RING_INNER], color="#8B0000", linewidth=1.4)
         ax.text(theta, _SIGN_RING_INNER - 0.05, label, ha="center", va="center", fontsize=10, fontweight="bold", color="#8B0000")
 
@@ -151,8 +177,8 @@ def render_chart_wheel(observation: Observation) -> bytes:
         color = _ASPECT_COLORS.get(cluster_aspect.aspect)
         if color is None:
             continue  # Aversion (ou cas hors-signe non représenté ici).
-        theta_a = np.radians(index_of_sign(cluster_aspect.sign_a) * 30 + 15)
-        theta_b = np.radians(index_of_sign(cluster_aspect.sign_b) * 30 + 15)
+        theta_a = _wheel_theta(index_of_sign(cluster_aspect.sign_a) * 30 + 15, ascendant_longitude)
+        theta_b = _wheel_theta(index_of_sign(cluster_aspect.sign_b) * 30 + 15, ascendant_longitude)
         ax.plot([theta_a, theta_b], [_ASPECT_HUB_RADIUS, _ASPECT_HUB_RADIUS], color=color, linewidth=1.0, alpha=0.75)
 
     return _figure_to_png_bytes(fig)
