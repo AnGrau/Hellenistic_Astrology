@@ -1,10 +1,13 @@
 import pytest
 
+from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
 from hellenistic_astrology.docgen.builder import (
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
     build_observation_document,
+    cluster_aspect_text,
+    conjunction_text,
     direction_label,
     format_dms,
 )
@@ -31,6 +34,55 @@ def test_direction_label_gender_agreement():
     assert direction_label("Vénus", True) == "Rétrograde"
     assert direction_label("Mars", True) == "Rétrograde"
     assert direction_label("Ascendant", None) == "—"
+
+
+def test_conjunction_text_single_member_is_none():
+    cluster = SignCluster(sign="Balance", house=3, members=("Mars",))
+    assert conjunction_text(cluster) is None
+
+
+def test_conjunction_text_mixed_gender_uses_masculine_plural():
+    cluster = SignCluster(sign="Lion", house=1, members=("Ascendant", "Lune"))
+    assert conjunction_text(cluster) == "l'Ascendant et Lune conjoints en Lion (maison 1)."
+
+
+def test_conjunction_text_all_feminine_uses_feminine_plural():
+    cluster = SignCluster(sign="Scorpion", house=4, members=("Lune", "Vénus"))
+    assert conjunction_text(cluster) == "Lune et Vénus conjointes en Scorpion (maison 4)."
+
+
+def test_conjunction_text_three_members_with_article():
+    cluster = SignCluster(
+        sign="Taureau", house=10, members=("Saturne", "Milieu du Ciel", "Part de l'Esprit")
+    )
+    assert conjunction_text(cluster) == (
+        "Saturne, le Milieu du Ciel et la Part de l'Esprit conjoints en Taureau (maison 10)."
+    )
+
+
+def test_cluster_aspect_text_real_aspect():
+    clusters_by_sign = {
+        "Lion": SignCluster(sign="Lion", house=1, members=("Ascendant",)),
+        "Scorpion": SignCluster(sign="Scorpion", house=4, members=("Soleil",)),
+    }
+    aspect = ClusterAspect(sign_a="Lion", sign_b="Scorpion", aspect="Carré")
+    assert cluster_aspect_text(aspect, clusters_by_sign) == (
+        "Lion (maison 1) en carré avec Scorpion (maison 4)."
+    )
+
+
+def test_cluster_aspect_text_boundary_exception():
+    clusters_by_sign = {
+        "Scorpion": SignCluster(sign="Scorpion", house=4, members=("Lune",)),
+        "Sagittaire": SignCluster(sign="Sagittaire", house=5, members=("Saturne",)),
+    }
+    aspect = ClusterAspect(
+        sign_a="Scorpion", sign_b="Sagittaire", aspect="Aversion", boundary_exception=True
+    )
+    assert cluster_aspect_text(aspect, clusters_by_sign) == (
+        "Scorpion (maison 4) et Sagittaire (maison 5) : conjonction hors signe "
+        "(règle des 3°, signes adjacents)."
+    )
 
 
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
@@ -80,3 +132,30 @@ def test_build_observation_document_structure(fixture_name):
     expected_mercury = fixture["rulerships"]["Mercure"]
     assert mercury_row[1] == ", ".join(expected_mercury["domicile_signs"])
     assert mercury_row[2] == ", ".join(str(h) for h in expected_mercury["houses_governed"])
+
+    heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
+    assert heading2_texts[-1] == "Aspects par signe relevés"
+
+    fixture_clusters = [
+        SignCluster(sign=c["sign"], house=c["house"], members=tuple(c["members"]))
+        for c in fixture["clusters"]
+    ]
+    clusters_by_sign = {c.sign: c for c in fixture_clusters}
+    expected_bullets = [
+        text for text in (conjunction_text(c) for c in fixture_clusters) if text is not None
+    ]
+    expected_bullets += [
+        cluster_aspect_text(
+            ClusterAspect(
+                sign_a=a["sign_a"],
+                sign_b=a["sign_b"],
+                aspect=a["aspect"],
+                boundary_exception=a["boundary_exception"],
+            ),
+            clusters_by_sign,
+        )
+        for a in fixture["cluster_aspects"]
+    ]
+
+    actual_bullets = [p.text for p in document.paragraphs if p.style.name == "List Bullet"]
+    assert actual_bullets == expected_bullets
