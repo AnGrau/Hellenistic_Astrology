@@ -4,7 +4,7 @@ from docx import Document
 
 from ..core.aspects import ClusterAspect, SignCluster, sign_aspect
 from ..core.dignities import DOMICILES, MutualReception
-from ..core.houses import house_quality
+from ..core.houses import house_quality, index_of_sign
 from ..core.observation import Observation, PointPosition
 from ..core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod, is_peak_period
 from . import styles
@@ -484,6 +484,116 @@ def add_ascendant_and_ruler_section(document: Document, observation: Observation
         document.add_paragraph(f"{ruler.name} régit également la maison {other_house}.")
 
 
+def _cluster_display_name(cluster: SignCluster) -> str:
+    """Nom d'un amas cible dans une clause relationnelle : "l'amas du Signe"
+    s'il a plusieurs membres (convention déjà établie par `cluster_aspect_text`,
+    Phase 1), le nom de son unique membre sinon."""
+    if len(cluster.members) == 1:
+        return _display_name(cluster.members[0])
+    return f"l'amas du {cluster.sign}"
+
+
+def _cluster_relations_clause(point: PointPosition, observation: Observation) -> str | None:
+    """Relations d'aspect de l'amas de `point` vers tous les autres amas,
+    groupées par type d'aspect (y compris aversion) dans l'ordre canonique de
+    `ASPECT_LABEL`, chaque groupe joint par `_join_french`. None si l'amas de
+    `point` n'a de relation avec aucun autre (cas non rencontré en pratique).
+
+    Réservée à la Lune dans `add_luminaries_section` : les deux documents de
+    référence énumèrent toujours ces relations pour la Lune, jamais pour le
+    Soleil (remplacé par `_solar_rays_clause`).
+    """
+    clusters_by_sign = {c.sign: c for c in observation.clusters}
+    targets_by_aspect: dict[str, list[SignCluster]] = {}
+    for cluster_aspect in observation.cluster_aspects:
+        if cluster_aspect.sign_a == point.sign:
+            other = clusters_by_sign[cluster_aspect.sign_b]
+        elif cluster_aspect.sign_b == point.sign:
+            other = clusters_by_sign[cluster_aspect.sign_a]
+        else:
+            continue
+        targets_by_aspect.setdefault(cluster_aspect.aspect, []).append(other)
+
+    if not targets_by_aspect:
+        return None
+
+    clauses = []
+    for aspect, label in ASPECT_LABEL.items():
+        targets = targets_by_aspect.get(aspect)
+        if not targets:
+            continue
+        ordered = sorted(targets, key=lambda c: index_of_sign(c.sign))
+        names = _join_french([_cluster_display_name(c) for c in ordered])
+        clauses.append(f"en {label} avec {names}")
+    return ", ".join(clauses)
+
+
+def _solar_rays_clause(observation: Observation) -> str:
+    """Clause de combustion du point de vue du Soleil lui-même : "sous les
+    rayons de X" pour les planètes combustes (réutilise `solar_proximity`,
+    déjà calculé pour "Dignités et réceptions", jalon 20), ou la clause fixe
+    des deux documents de référence si aucune ne l'est."""
+    combust = [sp for sp in observation.solar_proximity if sp.gap_degrees < COMBUSTION_ORB_DEGREES]
+    if not combust:
+        return "sous les rayons de personne (il est la source)"
+    names = _join_french([f"{sp.planet} ({format_dms(sp.gap_degrees)} d'écart)" for sp in combust])
+    return f"sous les rayons de {names}"
+
+
+def _sect_light_clause(point: PointPosition, observation: Observation) -> str | None:
+    """"lumière de secte de ce thème diurne/nocturne" pour le luminaire en
+    accord avec la secte de la carte, None sinon. Un seul des deux documents
+    de référence l'explicite (Anthony, pour sa Lune nocturne) ; retenue de
+    façon symétrique pour les deux luminaires (même logique que la règle de
+    secte elle-même, voir CLAUDE.md)."""
+    if point.sect_role != "Lumière de secte":
+        return None
+    return f"lumière de secte de ce thème {observation.sect}"
+
+
+def add_luminaries_section(document: Document, observation: Observation) -> None:
+    """Luminaires (Soleil, Lune), en Phase 2 : premier texte de Phase 2 où
+    Soleil et Lune reçoivent des traitements non symétriques, confirmé par
+    les deux documents de référence — la Lune énumère toujours ses relations
+    d'aspect à tous les autres amas (`_cluster_relations_clause`), le Soleil
+    ne le fait jamais, remplacé par la clause de combustion de son propre
+    point de vue (`_solar_rays_clause`). Inclut la mention "lumière de secte"
+    (`_sect_light_clause`) pour le luminaire en accord avec la secte de la
+    carte, et la phase de lunaison natale (`core.lunation`, voir ce module
+    pour une divergence relevée mais non reproduite sur le thème de Liam).
+    """
+    for point in (observation.planet("Soleil"), observation.planet("Lune")):
+        rulership = next(r for r in observation.rulerships if r.planet == point.name)
+        clauses = [DIGNITY_INLINE_CLAUSE[point.essential_dignity]]
+
+        sect_clause = _sect_light_clause(point, observation)
+        if sect_clause:
+            clauses.append(sect_clause)
+
+        if point.name == "Soleil":
+            clauses.append(_solar_rays_clause(observation))
+
+        conjunction = _conjunction_clause(point, observation)
+        if conjunction:
+            clauses.append(conjunction)
+
+        if point.name == "Lune":
+            relations = _cluster_relations_clause(point, observation)
+            if relations:
+                clauses.append(relations)
+
+        document.add_paragraph(
+            f"{point.name} : {point.sign}, maison {point.house}, "
+            f"régit la maison {rulership.houses_governed[0]}, {', '.join(clauses)}."
+        )
+
+    phase = observation.lunation_phase
+    document.add_paragraph(
+        f"Phase de lunaison natale : {phase.name} "
+        f"(écart Soleil-Lune d'environ {round(phase.gap_degrees)}°)."
+    )
+
+
 def build_observation_document(observation: Observation) -> Document:
     """Construit le document .docx : Phase 1 (Observation) complète, et les
     sous-sections de Phase 2 (Fiche technique) déjà couvertes par docgen
@@ -530,5 +640,8 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Ascendant et son maître", level=2)
     add_ascendant_and_ruler_section(document, observation)
+
+    document.add_heading("Luminaires", level=2)
+    add_luminaries_section(document, observation)
 
     return document

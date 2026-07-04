@@ -2,6 +2,7 @@ import json
 from dataclasses import asdict, dataclass, field
 
 from .dignities import MutualReception, Rulership, SolarProximity
+from .lunation import LunationPhase
 from .zodiacal_releasing import ReleasingChapter
 
 
@@ -68,6 +69,8 @@ class Observation:
     # Écart angulaire au Soleil pour les 5 planètes non-luminaires (combustion
     # / « sous les rayons ») — voir core.dignities.solar_proximity.
     solar_proximity: list[SolarProximity] = field(default_factory=list)
+    # Phase de lunaison natale (Rudhyar, 8 phases) — voir core.lunation.
+    lunation_phase: LunationPhase | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -1,7 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 
-from . import aspects, dignities, ephemeris, geocoding, houses, lots, sect, zodiacal_releasing
+from . import aspects, dignities, ephemeris, geocoding, houses, lots, lunation, sect, zodiacal_releasing
 from .observation import Observation, PointPosition
 from .timezone import BirthData, resolve_utc
 
@@ -123,6 +123,8 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         {name: raw.longitude for name, raw in raw_planets.items() if name not in {"Soleil", "Lune"}},
     )
 
+    lunation_phase = lunation.lunation_phase(sun_lon, moon_lon)
+
     zr_horizon = utc_dt + timedelta(days=365.25 * ZODIACAL_RELEASING_HORIZON_YEARS)
     zodiacal_releasing_fortune = zodiacal_releasing.releasing_chapters(
         part_of_fortune.sign, utc_dt, zr_horizon
@@ -150,4 +152,5 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         zodiacal_releasing_fortune=zodiacal_releasing_fortune,
         zodiacal_releasing_spirit=zodiacal_releasing_spirit,
         solar_proximity=solar_proximity,
+        lunation_phase=lunation_phase,
     )

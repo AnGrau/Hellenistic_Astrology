@@ -7,6 +7,7 @@ from hellenistic_astrology.core import dignities as dignities_module
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
 from hellenistic_astrology.core.chart import build_observation
 from hellenistic_astrology.core.dignities import MutualReception, Rulership, SolarProximity
+from hellenistic_astrology.core.lunation import LunationPhase
 from hellenistic_astrology.core.observation import Observation, PointPosition
 from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod
 from hellenistic_astrology.docgen.builder import (
@@ -18,6 +19,7 @@ from hellenistic_astrology.docgen.builder import (
     add_ascendant_and_ruler_section,
     add_dignities_and_receptions_section,
     add_elemental_modal_section,
+    add_luminaries_section,
     add_minor_dignities_table,
     add_zodiacal_releasing_table,
     build_observation_document,
@@ -391,6 +393,112 @@ def test_add_ascendant_and_ruler_section_ruler_in_ascendant_sign():
     assert paragraphs[2] == "Mars régit également la maison 8."
 
 
+def test_add_luminaries_section_synthetic():
+    # Configuration synthétique couvrant les deux traitements non symétriques :
+    # Soleil (pas de relation d'aspect énumérée, combustion de son propre
+    # point de vue, ici vide -> clause fixe) vs Lune (relations d'aspect à
+    # tous les autres amas énumérées, groupées par type). Soleil est lumière
+    # de secte (thème diurne), la Lune ne l'est pas -> teste les deux branches
+    # de `_sect_light_clause`.
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    soleil = PointPosition(
+        name="Soleil", sign="Lion", degree_in_sign=0, house=5,
+        essential_dignity="Domicile", sect_role="Lumière de secte",
+    )
+    mercure = PointPosition(name="Mercure", sign="Lion", degree_in_sign=0, house=5)
+    lune = PointPosition(
+        name="Lune", sign="Cancer", degree_in_sign=0, house=8,
+        essential_dignity="Domicile", sect_role="Hors secte (jour)",
+    )
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10),
+        planets=[soleil, mercure, lune],
+        rulerships=[
+            Rulership(planet="Soleil", domicile_signs=("Lion",), houses_governed=(5,)),
+            Rulership(planet="Lune", domicile_signs=("Cancer",), houses_governed=(8,)),
+        ],
+        clusters=[
+            SignCluster(sign="Bélier", house=1, members=("Ascendant",)),
+            SignCluster(sign="Cancer", house=8, members=("Lune",)),
+            SignCluster(sign="Lion", house=5, members=("Soleil", "Mercure")),
+            SignCluster(sign="Verseau", house=11, members=("Saturne", "Vénus")),
+        ],
+        cluster_aspects=[
+            ClusterAspect(sign_a="Bélier", sign_b="Cancer", aspect="Carré"),
+            ClusterAspect(sign_a="Cancer", sign_b="Verseau", aspect="Aversion"),
+            ClusterAspect(sign_a="Bélier", sign_b="Lion", aspect="Trigone"),
+            ClusterAspect(sign_a="Lion", sign_b="Verseau", aspect="Opposition"),
+        ],
+        solar_proximity=[],
+        lunation_phase=LunationPhase(name="gibbeuse", gap_degrees=150.4),
+    )
+    document = Document()
+
+    add_luminaries_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs == [
+        "Soleil : Lion, maison 5, régit la maison 5, en domicile, "
+        "lumière de secte de ce thème diurne, sous les rayons de personne (il est la source), "
+        "conjoint à Mercure.",
+        "Lune : Cancer, maison 8, régit la maison 8, en domicile, "
+        "en carré avec l'Ascendant, en aversion avec l'amas du Verseau.",
+        "Phase de lunaison natale : gibbeuse (écart Soleil-Lune d'environ 150°).",
+    ]
+
+
+def test_add_luminaries_section_sun_combustion_and_no_sect_light():
+    # Soleil hors secte (thème nocturne) et combuste par deux planètes :
+    # teste la clause de combustion non vide, jamais couverte par le test
+    # synthétique précédent, ainsi que l'absence de clause de secte.
+    soleil = PointPosition(
+        name="Soleil", sign="Scorpion", degree_in_sign=0, house=4,
+        essential_dignity="Pérégrin", sect_role="Hors secte (nuit)",
+    )
+    lune = PointPosition(
+        name="Lune", sign="Lion", degree_in_sign=0, house=1,
+        essential_dignity="Pérégrine", sect_role="Lumière de secte",
+    )
+    observation = Observation(
+        name="Test",
+        sect="nocturne",
+        ascendant=PointPosition(name="Ascendant", sign="Lion", degree_in_sign=0, house=1),
+        midheaven=PointPosition(name="Milieu du Ciel", sign="Taureau", degree_in_sign=0, house=10),
+        planets=[soleil, lune],
+        rulerships=[
+            Rulership(planet="Soleil", domicile_signs=("Lion",), houses_governed=(1,)),
+            Rulership(planet="Lune", domicile_signs=("Cancer",), houses_governed=(12,)),
+        ],
+        clusters=[
+            SignCluster(sign="Lion", house=1, members=("Lune",)),
+            SignCluster(sign="Scorpion", house=4, members=("Soleil",)),
+        ],
+        cluster_aspects=[ClusterAspect(sign_a="Lion", sign_b="Scorpion", aspect="Carré")],
+        solar_proximity=[
+            SolarProximity(planet="Mercure", gap_degrees=13.5),
+            SolarProximity(planet="Jupiter", gap_degrees=9.0),
+            SolarProximity(planet="Vénus", gap_degrees=20.0),
+        ],
+        lunation_phase=LunationPhase(name="disséminatrice", gap_degrees=269.5),
+    )
+    document = Document()
+
+    add_luminaries_section(document, observation)
+
+    paragraphs = [p.text for p in document.paragraphs]
+    assert paragraphs[0] == (
+        "Soleil : Scorpion, maison 4, régit la maison 1, pérégrin, "
+        "sous les rayons de Mercure (13°30' d'écart) et Jupiter (9°00' d'écart)."
+    )
+    assert paragraphs[1] == (
+        "Lune : Lion, maison 1, régit la maison 12, pérégrine, "
+        "lumière de secte de ce thème nocturne, en carré avec Soleil."
+    )
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -475,11 +583,12 @@ def test_build_observation_document_structure(fixture_name):
         )
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
-    assert heading2_texts[-4:] == [
+    assert heading2_texts[-5:] == [
         "Répartition élémentaire et modale",
         "Angularité",
         "Dignités et réceptions",
         "Ascendant et son maître",
+        "Luminaires",
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
@@ -589,7 +698,53 @@ def test_build_observation_document_structure(fixture_name):
         for i, p in enumerate(all_paragraphs)
         if p.style.name == "Heading 2" and p.text == "Ascendant et son maître"
     )
+    luminaries_heading_index = next(
+        i
+        for i, p in enumerate(all_paragraphs)
+        if p.style.name == "Heading 2" and p.text == "Luminaires"
+    )
     ascendant_paragraphs = [
-        p.text for p in all_paragraphs[ascendant_heading_index + 1 :] if p.text
+        p.text
+        for p in all_paragraphs[ascendant_heading_index + 1 : luminaries_heading_index]
+        if p.text
     ]
     assert ascendant_paragraphs == expected_ascendant_paragraphs[fixture_name]
+
+    # "Luminaires" recoupé mot pour mot contre le texte réel des deux
+    # documents, aux divergences assumées près (voir core.lunation et
+    # docgen.builder.add_luminaries_section) : mention systématique de
+    # "lumière de secte" (absente du Soleil diurne de Liam dans le document
+    # d'origine), énumération systématique des relations d'aspect de la Lune
+    # (incomplète dans les deux documents d'origine), combustion du Soleil
+    # recalculée depuis `solar_proximity` plutôt que reprise du texte
+    # d'Anthony (qui la contredit lui-même : sa propre section "Dignités et
+    # réceptions" liste Mercure et Jupiter sous les rayons du Soleil, alors
+    # que Luminaires affirme "sous les rayons de personne"), et phase de
+    # lunaison classée "Pleine" pour Liam plutôt que "disséminatrice" comme
+    # l'affirme son document (bornes vérifiées indépendamment, voir
+    # core.lunation).
+    expected_luminaries_paragraphs = {
+        "anthony": [
+            "Soleil : Scorpion, maison 4, régit la maison 1, pérégrin, "
+            "sous les rayons de Mercure (13°46' d'écart) et Jupiter (9°09' d'écart), "
+            "conjoint à Vénus, Jupiter et la Part de Fortune.",
+            "Lune : Lion, maison 1, régit la maison 12, pérégrine, "
+            "lumière de secte de ce thème nocturne, conjointe à l'Ascendant et Nœud Sud, "
+            "en sextile avec Mars, en carré avec l'amas du Taureau et l'amas du Scorpion, "
+            "en trigone avec Mercure, en opposition avec l'amas du Verseau.",
+            "Phase de lunaison natale : disséminatrice (écart Soleil-Lune d'environ 270°).",
+        ],
+        "liam": [
+            "Soleil : Balance, maison 9, régit la maison 7, en chute, "
+            "lumière de secte de ce thème diurne, sous les rayons de Jupiter (2°18' d'écart), "
+            "conjoint à Jupiter et Nœud Sud.",
+            "Lune : Taureau, maison 4, régit la maison 6, en exaltation, conjointe à Mars, "
+            "en sextile avec l'amas du Cancer, en carré avec l'amas du Lion et l'Ascendant, "
+            "en opposition avec Mercure, en aversion avec Nœud Nord, l'amas du Balance et l'amas du Sagittaire.",
+            "Phase de lunaison natale : pleine (écart Soleil-Lune d'environ 207°).",
+        ],
+    }
+    luminaries_paragraphs = [
+        p.text for p in all_paragraphs[luminaries_heading_index + 1 :] if p.text
+    ]
+    assert luminaries_paragraphs == expected_luminaries_paragraphs[fixture_name]
