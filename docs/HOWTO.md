@@ -10,6 +10,8 @@ Trois façons d'utiliser ce projet, du plus simple au plus intégré :
 - **B. Depuis Claude Code ou Mistral Vibe**, en travaillant directement dans ce dépôt (le serveur MCP et le skill sont disponibles automatiquement).
 - **C. Depuis Claude Chat ou Mistral Le Chat**, sans logiciel local (voir les limites en fin de guide).
 
+Dans les trois cas, le skill `.claude/skills/hellenistic-astrology/` peut guider les étapes 1 à 5 ci-dessous de bout en bout — il appelle les outils MCP quand ils sont disponibles (voies A/B) ou indique la commande exacte à lancer soi-même sinon (voie C), sans jamais sauter la relecture humaine de la Phase 3 (étape 4). Les sous-sections suivantes détaillent chaque étape pour qui préfère la main sur chaque commande.
+
 ## 1. Installer
 
 ```bash

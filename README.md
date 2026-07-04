@@ -58,6 +58,8 @@ La Phase 3 (Interprétation) n'est pas encore automatisée dans le CLI : `hellen
 
 Un skill Claude Code (`.claude/skills/hellenistic-astrology-phase3/`) rédige cette Phase 3 à partir d'un brief déjà généré, en respectant les règles de style du projet et en restant traçable aux faits fournis. Il suit le standard ouvert [Agent Skills](https://agentskills.io) et fonctionne aussi sur Claude.ai/Claude Chat et Mistral Vibe (une fois copié ou référencé dans leur propre dossier de skills) — voir "Reste à faire" dans `CLAUDE.md` pour la suite.
 
+Un second skill (`.claude/skills/hellenistic-astrology/`) orchestre les quatre étapes de bout en bout (calcul, brief, rédaction, assemblage) à partir de simples données de naissance, en s'adaptant à ce que l'environnement courant peut exécuter : appel direct des outils MCP ci-dessous quand ils sont disponibles (Claude Code, Claude Desktop, Mistral Vibe), ou instructions de commande à lancer soi-même sinon (Claude Chat, Mistral Le Chat). La relecture humaine de la Phase 3 reste, dans les deux cas, une étape obligatoire que ce skill ne saute jamais.
+
 ## Serveur MCP local
 
 Un serveur MCP local (`src/hellenistic_astrology/mcp_server.py`, transport stdio — sous-processus local, aucune exposition réseau) expose quatre outils à Claude Code et Mistral Vibe quand ils travaillent sur ce dépôt cloné : `compute_observation` (JSON structuré), `generate_document` (`.docx` complet), `generate_interpretation_brief` (brief de Phase 3) et `assemble_final_document` (ajoute la prose de Phase 3, une fois rédigée et finalisée, à la suite du `.docx` — voir "Assembler le document final" ci-dessous).
