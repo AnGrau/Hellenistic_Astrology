@@ -64,9 +64,9 @@ _ASPECT_COLORS = {
 }
 
 _SIGN_RING_INNER = 0.78
-_HOUSE_NUMBER_RADIUS = 0.70
+_HOUSE_NUMBER_RADIUS = 0.735
 _ASPECT_HUB_RADIUS = 0.35
-_POINT_BASE_RADIUS = 0.62
+_POINT_BASE_RADIUS = 0.58
 _POINT_RADIUS_STEP = 0.09
 
 
@@ -91,19 +91,31 @@ def _wheel_theta(longitude_degrees: float, ascendant_longitude: float) -> float:
 
 
 def render_chart_wheel(observation: Observation) -> bytes:
-    """Roue du thème : 12 secteurs de signe (teinte par élément, réutilise
-    `dignities.SIGN_TRIPLICITY`), glyphes de signe et de point placés par
-    longitude réelle (`houses.longitude_of`), numéros de maison (whole
-    sign, réutilise `houses.whole_sign_house`), les quatre angles
-    (Ascendant/Descendant/Milieu du Ciel/Fond du Ciel) marqués par une
-    ligne radiale distincte, lignes d'aspect entre amas
+    """Roue du thème : voir `_build_chart_wheel_figure` pour le détail du
+    dessin. Cette fonction ne fait que le convertir en PNG."""
+    return _figure_to_png_bytes(_build_chart_wheel_figure(observation))
+
+
+def _build_chart_wheel_figure(observation: Observation):
+    """Construit la figure matplotlib de la roue du thème (sans la
+    convertir en PNG ni fermer la figure) : 12 secteurs de signe (teinte
+    par élément, réutilise `dignities.SIGN_TRIPLICITY`), glyphes de signe
+    et de point placés par longitude réelle (`houses.longitude_of`),
+    numéros de maison (whole sign, réutilise `houses.whole_sign_house`),
+    les quatre angles (Ascendant/Descendant/Milieu du Ciel/Fond du Ciel)
+    marqués par une ligne radiale distincte, lignes d'aspect entre amas
     (`observation.cluster_aspects`, aversions exclues) tracées à l'angle
     médian de chaque signe — fidèle à la méthodologie du projet (aspects
     par signe entre amas, pas des aspects degré-précis entre planètes
     individuelles). Le repère est ancré sur l'Ascendant (`_wheel_theta`),
     pas sur le zodiaque fixe : Ascendant/Descendant toujours horizontaux,
     Milieu du Ciel/Fond du Ciel à leur position réelle (qui dépend de la
-    latitude, comme en whole-sign — pas nécessairement en haut/en bas)."""
+    latitude, comme en whole-sign — pas nécessairement en haut/en bas).
+
+    Figure séparée de `render_chart_wheel` (qui ne fait que la convertir en
+    PNG) pour que les tests puissent inspecter les bounding boxes de texte
+    (`tests/test_chart_image.py`, détection de chevauchement) sans dupliquer
+    la logique de dessin."""
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="polar")
     ax.set_theta_zero_location("E")
@@ -181,7 +193,7 @@ def render_chart_wheel(observation: Observation) -> bytes:
         theta_b = _wheel_theta(index_of_sign(cluster_aspect.sign_b) * 30 + 15, ascendant_longitude)
         ax.plot([theta_a, theta_b], [_ASPECT_HUB_RADIUS, _ASPECT_HUB_RADIUS], color=color, linewidth=1.0, alpha=0.75)
 
-    return _figure_to_png_bytes(fig)
+    return fig
 
 
 def render_elemental_modal_chart(observation: Observation) -> bytes:

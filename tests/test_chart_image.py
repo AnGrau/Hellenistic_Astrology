@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import matplotlib.pyplot as plt
 import pytest
 
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
@@ -26,6 +27,32 @@ def test_render_chart_wheel_on_reference_charts(fixture_name):
 
     assert png.startswith(PNG_MAGIC)
     assert len(png) > 0
+
+
+@pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
+def test_render_chart_wheel_labels_do_not_overlap(fixture_name):
+    # Détection de chevauchement par bounding box (matplotlib), pas une
+    # comparaison pixel par pixel : vérifie que les numéros de maison, les
+    # glyphes de signe/point et les étiquettes d'angle (AC/DC/MC/IC) ne se
+    # recouvrent jamais entre eux, sur la figure réellement dessinée par
+    # `_build_chart_wheel_figure` (pas une réimplémentation séparée).
+    fixture = load_fixture(fixture_name)
+    observation = build_observation(birth_data_from_fixture(fixture))
+
+    fig = chart_image._build_chart_wheel_figure(observation)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    boxes = [text.get_window_extent(renderer=renderer) for text in fig.axes[0].texts]
+
+    overlaps = [
+        (i, j)
+        for i in range(len(boxes))
+        for j in range(i + 1, len(boxes))
+        if boxes[i].overlaps(boxes[j])
+    ]
+    plt.close(fig)
+
+    assert overlaps == []
 
 
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
