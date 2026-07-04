@@ -4,7 +4,7 @@ from docx import Document
 import pytest
 
 from hellenistic_astrology.core import dignities as dignities_module
-from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster
+from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster, sign_aspect
 from hellenistic_astrology.core.chart import build_observation
 from hellenistic_astrology.core.dignities import MutualReception, Rulership, SolarProximity
 from hellenistic_astrology.core.eclipse import EclipseConfiguration
@@ -12,17 +12,21 @@ from hellenistic_astrology.core.lunation import LunationPhase
 from hellenistic_astrology.core.observation import Observation, PointPosition
 from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod
 from hellenistic_astrology.docgen.builder import (
+    ASPECT_GLYPH,
     MINOR_DIGNITIES_HEADER,
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
     ZODIACAL_RELEASING_HEADER,
     add_angularity_section,
     add_ascendant_and_ruler_section,
+    add_aspectarian_table,
+    add_cover_page,
     add_dignities_and_receptions_section,
     add_elemental_modal_section,
     add_luminaries_section,
     add_minor_dignities_table,
     add_nodes_and_parts_section,
+    add_positions_table,
     add_zodiacal_releasing_table,
     build_observation_document,
     cluster_aspect_text,
@@ -32,6 +36,7 @@ from hellenistic_astrology.docgen.builder import (
     format_releasing_date,
     mutual_reception_text,
 )
+from hellenistic_astrology.docgen import styles
 
 from .regression_helpers import birth_data_from_fixture, load_fixture
 
@@ -238,8 +243,10 @@ def test_add_elemental_modal_and_angularity_sections_synthetic():
         "Fixe : Soleil et Part de Fortune (2 facteurs). "
         "Mutable : Mercure (1 facteur)."
     )
-    assert paragraphs[2] == "Maison 1 : Ascendant, Lune. Maison 4 : Soleil."
-    assert paragraphs[3] == (
+    # paragraphs[2] est le paragraphe du graphique élément/modalité inséré
+    # par add_elemental_modal_section (jalon 33) : pas de texte, une image.
+    assert paragraphs[3] == "Maison 1 : Ascendant, Lune. Maison 4 : Soleil."
+    assert paragraphs[4] == (
         "Hors angularité : Mercure (maison 2, succédente), "
         "Nœud Nord et la Part de Fortune (maison 3, cadente)."
     )
@@ -598,6 +605,106 @@ def test_add_nodes_and_parts_section_synthetic_no_conjunction_no_eclipse():
     ]
 
 
+def _cell_shading_fill(cell) -> str | None:
+    shd = cell._tc.get_or_add_tcPr().find(
+        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}shd"
+    )
+    if shd is None:
+        return None
+    return shd.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fill")
+
+
+def test_add_positions_table_shades_dignity_cells():
+    def make_planet(name, sign, essential_dignity):
+        return PointPosition(
+            name=name, sign=sign, degree_in_sign=0, house=1, essential_dignity=essential_dignity,
+        )
+
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    domicile_planet = make_planet("Mars", "Bélier", "Domicile")
+    exil_planet = make_planet("Vénus", "Bélier", "Exil (détriment)")
+    peregrine_planet = make_planet("Saturne", "Gémeaux", "Pérégrin")
+    observation = Observation(
+        name="Test", sect="diurne", ascendant=ascendant, midheaven=midheaven,
+        planets=[domicile_planet, exil_planet, peregrine_planet],
+        all_points=[ascendant, domicile_planet, exil_planet, peregrine_planet, midheaven],
+    )
+    document = Document()
+
+    table = add_positions_table(document, observation)
+
+    rows_by_name = {row.cells[0].text: row for row in table.rows[1:]}
+    assert _cell_shading_fill(rows_by_name["Mars"].cells[6]) == styles.DIGNITY_FAVORABLE_SHADING
+    assert _cell_shading_fill(rows_by_name["Vénus"].cells[6]) == styles.DIGNITY_UNFAVORABLE_SHADING
+    assert _cell_shading_fill(rows_by_name["Saturne"].cells[6]) is None
+    assert _cell_shading_fill(rows_by_name["Ascendant"].cells[6]) is None
+
+
+def test_add_aspectarian_table_triangular_structure():
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    planets = [
+        PointPosition(name=name, sign=sign, degree_in_sign=0, house=1)
+        for name, sign in [
+            ("Soleil", "Bélier"), ("Lune", "Bélier"), ("Mercure", "Cancer"),
+            ("Vénus", "Balance"), ("Mars", "Capricorne"), ("Jupiter", "Lion"),
+            ("Saturne", "Verseau"),
+        ]
+    ]
+    observation = Observation(
+        name="Test", sect="diurne", ascendant=ascendant, midheaven=midheaven, planets=planets,
+        all_points=[ascendant, *planets, midheaven],
+    )
+    document = Document()
+
+    table = add_aspectarian_table(document, observation)
+
+    assert [cell.text for cell in table.rows[0].cells] == [
+        "", "Soleil", "Lune", "Mercure", "Vénus", "Mars", "Jupiter",
+    ]
+    assert [row.cells[0].text for row in table.rows[1:]] == [
+        "Lune", "Mercure", "Vénus", "Mars", "Jupiter", "Saturne",
+    ]
+    # Même signe (Soleil/Lune, tous deux Bélier) : glyphe de conjonction.
+    assert table.rows[1].cells[1].text == "☌"
+    # Case triangulaire supérieure jamais renseignée (ex. Lune/Lune n'existe
+    # pas, mais Mercure/Vénus, au-dessus de la diagonale, doit rester vide).
+    assert table.rows[2].cells[4].text == ""
+    # Dernière ligne (Saturne) : toutes les 6 colonnes renseignées.
+    assert all(table.rows[6].cells[i].text for i in range(1, 7))
+
+
+def test_add_cover_page_centers_name_ascendant_sect_and_wheel():
+    ascendant = PointPosition(name="Ascendant", sign="Lion", degree_in_sign=10, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Taureau", degree_in_sign=5, house=10)
+    soleil = PointPosition(name="Soleil", sign="Scorpion", degree_in_sign=10, house=4)
+    observation = Observation(
+        name="Anthony", sect="nocturne", ascendant=ascendant, midheaven=midheaven,
+        planets=[soleil], all_points=[ascendant, soleil, midheaven],
+    )
+    document = Document()
+
+    add_cover_page(document, observation)
+
+    assert document.paragraphs[0].text == "Anthony"
+    assert document.paragraphs[0].style.name == "Title"
+    assert document.paragraphs[1].text == "Ascendant Lion (maison 1) — Thème nocturne"
+    assert len(document.inline_shapes) == 1
+
+
+def test_add_table_of_contents_inserts_field_and_update_setting():
+    document = Document()
+
+    styles.add_table_of_contents(document)
+
+    paragraph_xml = document.paragraphs[-1]._p.xml
+    assert "fldChar" in paragraph_xml
+    assert "instrText" in paragraph_xml
+    assert 'TOC \\o "1-2" \\h \\z \\u' in paragraph_xml
+    assert "updateFields" in document.settings.element.xml
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_build_observation_document_structure(fixture_name):
     fixture = load_fixture(fixture_name)
@@ -606,15 +713,17 @@ def test_build_observation_document_structure(fixture_name):
     document = build_observation_document(observation)
 
     assert [p.text for p in document.paragraphs if p.style.name == "Heading 1"] == [
+        "Table des matières",
         "Phase 1 — Observation",
         "Phase 2 — Fiche technique",
     ]
-    assert len(document.tables) == 5
+    assert len(document.tables) == 6
 
     (
         positions_table,
         rulerships_table,
         minor_dignities_table,
+        aspectarian_table,
         zr_fortune_table,
         zr_spirit_table,
     ) = document.tables
@@ -692,8 +801,21 @@ def test_build_observation_document_structure(fixture_name):
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
+    assert "Aspectarian (planète × planète)" in heading2_texts
     assert "Libération zodiacale — Part de Fortune" in heading2_texts
     assert "Libération zodiacale — Part de l'Esprit" in heading2_texts
+
+    # Aspectarian : recoupe une case au hasard (Soleil/Lune) contre le même
+    # calcul core.aspects.sign_aspect, pas un nouveau calcul.
+    assert [cell.text for cell in aspectarian_table.rows[0].cells][0] == ""
+    soleil_sign = observation.planet("Soleil").sign
+    lune_sign = observation.planet("Lune").sign
+    lune_row = next(
+        row for row in aspectarian_table.rows if row.cells[0].text == "Lune"
+    )
+    expected_aspect = sign_aspect(soleil_sign, lune_sign)
+    expected_glyph = "☌" if expected_aspect is None else ASPECT_GLYPH[expected_aspect]
+    assert lune_row.cells[1].text == expected_glyph
 
     # Recoupe le rendu docgen contre le même calcul core.zodiacal_releasing,
     # sur la position réellement calculée (pas la fixture, qui ne documente

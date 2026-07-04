@@ -52,7 +52,10 @@ Générer le document Phase 1 + Phase 2 (`.docx`) :
 uv run hellenistic-astrology naissance.json
 ```
 
-Écrit dans `output/<nom>.docx` par défaut (dossier gitignored).
+Écrit dans `output/<nom>.docx` par défaut (dossier gitignored). Le document
+inclut une page de garde avec la roue du thème, une table des matières,
+ainsi que des graphiques (élément/modalité, frise de libération zodiacale)
+et un aspectarian planète × planète — voir `README.md` pour le détail.
 
 Générer le brief factuel pour la Phase 3 (nécessaire avant de rédiger
 l'Interprétation — voir étape 4) :

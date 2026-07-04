@@ -23,9 +23,20 @@ voir `interpretation/CLAUDE.md`.
   `build_observation_document` (le seul point d'entrée public — orchestre
   l'appel de toutes les sous-sections dans l'ordre du document final).
 - `styles.py` : mise en forme des tableaux (en-têtes, largeurs, ombrage) —
-  purement visuel, aucune logique astrologique.
+  purement visuel, aucune logique astrologique. Contient aussi
+  `add_table_of_contents` (champ Word `TOC`, construit via oxml bas niveau
+  faute de support natif python-docx).
+- `chart_image.py` (jalon 33) : rendu d'images (`Observation -> bytes` PNG,
+  via `matplotlib`) — roue du thème, graphique élément/modalité, frise de
+  libération zodiacale. Même frontière que le reste de `docgen` : aucun
+  calcul de position propre, dessiné à la main plutôt qu'avec une
+  bibliothèque de thèmes existante (`kerykeion`) pour ne jamais introduire
+  un second moteur Swiss Ephemeris indépendant de `core/`. Un import tardif
+  dans `render_elemental_modal_chart` (vers `builder._distribution_points`)
+  évite un cycle `builder -> chart_image -> builder` — même pattern que
+  `dignities.solar_proximity` (jalon 20).
 
-## Deux styles de rendu, selon la nature de la sous-section
+## Deux styles de rendu textuel, selon la nature de la sous-section
 
 1. **Tables et puces factuelles** (Phase 1 entière, plus « Dignités et
    réceptions » en Phase 2) : un fait → une ligne/puce, format fixe, pas de

@@ -26,7 +26,7 @@ def test_cli_generates_docx_from_json_birth_data(tmp_path):
 
     document = Document(str(output_path))
     headings = [p.text for p in document.paragraphs if p.style.name == "Heading 1"]
-    assert headings == ["Phase 1 — Observation", "Phase 2 — Fiche technique"]
+    assert headings == ["Table des matières", "Phase 1 — Observation", "Phase 2 — Fiche technique"]
 
 
 def test_cli_defaults_output_to_output_dir_with_slugified_name(tmp_path, monkeypatch):

@@ -4,17 +4,21 @@
 final et ne fait que mettre en forme des faits déjà présents sur
 l'`Observation` fournie."""
 
+import io
 from datetime import datetime
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches
 
 from ..core.aspects import ClusterAspect, SignCluster, sign_aspect
 from ..core.dignities import DOMICILES, MutualReception
 from ..core.eclipse import SOLAR_ECLIPSE_ORB_DEGREES
+from ..core.ephemeris import CLASSICAL_PLANETS
 from ..core.houses import house_quality, index_of_sign
 from ..core.observation import Observation, PointPosition
 from ..core.zodiacal_releasing import ReleasingChapter, ReleasingPeriod, is_peak_period
-from . import styles
+from . import chart_image, styles
 
 FEMININE_PLANETS = {"Lune", "Vénus"}
 FEMININE_POINTS = FEMININE_PLANETS | {"Part de Fortune", "Part de l'Esprit", "Part d'Éros"}
@@ -37,8 +41,33 @@ ASPECT_LABEL = {
     "Aversion": "aversion",
 }
 
+# Glyphes de l'aspectarian (jalon 33) — la conjonction n'apparaît jamais
+# dans ASPECT_LABEL ci-dessus (sign_aspect() renvoie None pour deux signes
+# identiques, cas géré à part dans add_aspectarian_table), d'où l'entrée
+# séparée ici.
+CONJUNCTION_GLYPH = "☌"
+ASPECT_GLYPH = {
+    "Sextile": "⚹",
+    "Carré": "□",
+    "Trigone": "△",
+    "Opposition": "☍",
+    "Aversion": "—",
+}
+
+# Ombrage des cellules de dignité essentielle (jalon 33) : Domicile et
+# Exaltation favorables, Exil (détriment) et Chute défavorables, Pérégrin
+# neutre (pas de couleur) — même hiérarchie que DIGNITY_CATEGORY_ORDER.
+DIGNITY_SHADING = {
+    "Domicile": styles.DIGNITY_FAVORABLE_SHADING,
+    "Exaltation": styles.DIGNITY_FAVORABLE_SHADING,
+    "Exil (détriment)": styles.DIGNITY_UNFAVORABLE_SHADING,
+    "Chute": styles.DIGNITY_UNFAVORABLE_SHADING,
+}
+
 POSITIONS_HEADER = ["Astre", "Signe", "Degré", "Maison", "Rôle de secte", "Direction", "Dignité essentielle"]
 POSITIONS_COLUMN_WIDTHS_DXA = [1700, 1300, 1100, 900, 1900, 1300, 1600]
+
+ASPECTARIAN_COLUMN_WIDTHS_DXA = [1300] * 7
 
 RULERSHIPS_HEADER = ["Planète", "Domiciles gouvernés", "Maisons régies depuis l'Ascendant"]
 RULERSHIPS_COLUMN_WIDTHS_DXA = [2400, 3200, 3200]
@@ -111,6 +140,9 @@ def _positions_row(table, point: PointPosition) -> None:
     cells[4].text = point.sect_role or "—"
     cells[5].text = direction_label(point.name, point.retrograde)
     cells[6].text = point.essential_dignity or "—"
+    shading = DIGNITY_SHADING.get(point.essential_dignity)
+    if shading:
+        styles.shade_cell(cells[6], shading)
 
 
 def add_positions_table(document: Document, observation: Observation):
@@ -263,6 +295,35 @@ def add_aspects_section(document: Document, observation: Observation) -> None:
         document.add_paragraph(mutual_reception_text(reception), style="List Bullet")
 
 
+def add_aspectarian_table(document: Document, observation: Observation):
+    """Grille triangulaire planète × planète (7 classiques uniquement) :
+    une case par paire, glyphe de conjonction si même signe (`sign_aspect`
+    renvoie None dans ce cas), sinon glyphe de l'aspect par signe issu de
+    `aspects.sign_aspect` (réutilisé tel quel, aucun nouveau calcul).
+    Complément visuel à `add_aspects_section` (puces), pas un remplacement :
+    la grille montre toutes les paires d'un coup d'œil, y compris les
+    aversions, déjà listées en puces mais moins vite comparables entre
+    elles sous cette forme."""
+    planet_names = list(CLASSICAL_PLANETS.keys())
+    table = document.add_table(rows=1, cols=len(planet_names))
+    styles.style_table(table, ASPECTARIAN_COLUMN_WIDTHS_DXA)
+    styles.set_header_cell(table.rows[0].cells[0], "")
+    for cell, name in zip(table.rows[0].cells[1:], planet_names[:-1]):
+        styles.set_header_cell(cell, name)
+
+    for row_index, row_planet in enumerate(planet_names[1:], start=1):
+        row = table.add_row()
+        styles.set_header_cell(row.cells[0], row_planet)
+        row_sign = observation.planet(row_planet).sign
+        for col_index, col_planet in enumerate(planet_names[:-1], start=1):
+            if col_index > row_index:
+                continue  # Moitié supérieure non renseignée (triangulaire).
+            col_sign = observation.planet(col_planet).sign
+            aspect = sign_aspect(row_sign, col_sign)
+            row.cells[col_index].text = CONJUNCTION_GLYPH if aspect is None else ASPECT_GLYPH[aspect]
+    return table
+
+
 def _distribution_points(observation: Observation) -> list[PointPosition]:
     """Le jeu de points utilisé pour la répartition élémentaire/modale et
     l'angularité (Phase 2) : Ascendant + 7 planètes + Nœud Nord + les 3
@@ -324,6 +385,9 @@ def add_elemental_modal_section(document: Document, observation: Observation) ->
     document.add_paragraph(
         "Modalité, par ordre décroissant de nombre de facteurs : " + " ".join(modality_sentences)
     )
+
+    chart_png = chart_image.render_elemental_modal_chart(observation)
+    document.add_picture(io.BytesIO(chart_png), width=Inches(5.5))
 
 
 def add_angularity_section(document: Document, observation: Observation) -> None:
@@ -680,6 +744,28 @@ def add_nodes_and_parts_section(document: Document, observation: Observation) ->
     document.add_paragraph(_eclipse_configuration_clause(observation))
 
 
+def add_cover_page(document: Document, observation: Observation) -> None:
+    """Page de garde : nom, Ascendant (signe + maison), secte, puis la roue
+    du thème centrée. Ne nécessite pas `BirthData` : tout est déjà présent
+    sur `Observation` (name, sect, ascendant)."""
+    title = document.add_heading(observation.name, level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    subtitle = document.add_paragraph()
+    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subtitle.add_run(
+        f"Ascendant {observation.ascendant.sign} (maison {observation.ascendant.house}) — "
+        f"Thème {observation.sect}"
+    )
+
+    wheel_png = chart_image.render_chart_wheel(observation)
+    picture_paragraph = document.add_paragraph()
+    picture_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    picture_paragraph.add_run().add_picture(io.BytesIO(wheel_png), width=Inches(5.5))
+
+    document.add_page_break()
+
+
 def build_observation_document(observation: Observation) -> Document:
     """Construit le document .docx : Phase 1 (Observation) complète, et les
     sous-sections de Phase 2 (Fiche technique) déjà couvertes par docgen
@@ -690,6 +776,13 @@ def build_observation_document(observation: Observation) -> Document:
     ne fait que mettre en forme des données déjà calculées.
     """
     document = Document()
+
+    add_cover_page(document, observation)
+
+    document.add_heading("Table des matières", level=1)
+    styles.add_table_of_contents(document)
+    document.add_page_break()
+
     document.add_heading("Phase 1 — Observation", level=1)
 
     document.add_heading("Positions planétaires et facteurs sensibles", level=2)
@@ -706,12 +799,20 @@ def build_observation_document(observation: Observation) -> Document:
     document.add_heading("Aspects par signe relevés", level=2)
     add_aspects_section(document, observation)
 
+    document.add_heading("Aspectarian (planète × planète)", level=2)
+    add_aspectarian_table(document, observation)
+
     fortune_sign = observation.part_of_fortune.sign
     document.add_heading("Libération zodiacale — Part de Fortune", level=2)
     add_zodiacal_releasing_table(document, observation.zodiacal_releasing_fortune, fortune_sign)
 
     document.add_heading("Libération zodiacale — Part de l'Esprit", level=2)
     add_zodiacal_releasing_table(document, observation.zodiacal_releasing_spirit, fortune_sign)
+
+    timeline_png = chart_image.render_zodiacal_releasing_timeline(
+        observation.zodiacal_releasing_fortune, observation.zodiacal_releasing_spirit, fortune_sign
+    )
+    document.add_picture(io.BytesIO(timeline_png), width=Inches(6.5))
 
     document.add_heading("Phase 2 — Fiche technique", level=1)
 
