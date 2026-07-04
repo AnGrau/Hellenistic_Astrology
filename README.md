@@ -43,4 +43,4 @@ uv run hellenistic-astrology naissance.json
 
 Le `.docx` est écrit dans `output/<nom>.docx` par défaut (dossier gitignored, contient des données personnelles), ou vers le chemin donné avec `-o`/`--output`.
 
-Le document généré ne couvre pour l'instant que la Phase 1 (Observation : positions — y compris Nœud Nord/Sud et Part d'Éros —, maîtrises, aspects par signe, réceptions mutuelles par domicile) — voir "Reste à faire" dans `CLAUDE.md`.
+Le document généré ne couvre pour l'instant que la Phase 1 (Observation : positions — y compris Nœud Nord/Sud et Part d'Éros —, maîtrises traditionnelles, dignités mineures — triplicité, bornes égyptiennes, décans —, aspects par signe, réceptions mutuelles par domicile) — voir "Reste à faire" dans `CLAUDE.md`.
