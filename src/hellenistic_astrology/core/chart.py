@@ -61,7 +61,28 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
     part_of_fortune = make_point("Part de Fortune", fortune_lon)
     part_of_spirit = make_point("Part de l'Esprit", spirit_lon)
 
-    all_points = [ascendant, *planets, midheaven, part_of_fortune, part_of_spirit]
+    venus_lon = raw_planets["Vénus"].longitude
+    eros_lon = lots.part_of_eros(ascendant_lon, venus_lon, spirit_lon, diurnal)
+    part_of_eros = make_point("Part d'Éros", eros_lon)
+
+    raw_north_node = ephemeris.north_node(jd_ut, flags)
+    north_node = make_point(
+        "Nœud Nord", raw_north_node.longitude, retrograde=raw_north_node.retrograde
+    )
+    south_node = make_point(
+        "Nœud Sud", (raw_north_node.longitude + 180) % 360, retrograde=raw_north_node.retrograde
+    )
+
+    all_points = [
+        ascendant,
+        *planets,
+        north_node,
+        south_node,
+        midheaven,
+        part_of_fortune,
+        part_of_spirit,
+        part_of_eros,
+    ]
     clusters = aspects.build_clusters(all_points)
     cluster_aspects = aspects.compute_cluster_aspects(clusters, all_points)
 
@@ -73,7 +94,11 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         planets=planets,
         part_of_fortune=part_of_fortune,
         part_of_spirit=part_of_spirit,
+        part_of_eros=part_of_eros,
+        north_node=north_node,
+        south_node=south_node,
         rulerships=dignities.traditional_rulerships(ascendant_lon),
+        all_points=all_points,
         clusters=clusters,
         cluster_aspects=cluster_aspects,
     )

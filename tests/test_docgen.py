@@ -101,8 +101,8 @@ def test_build_observation_document_structure(fixture_name):
 
     header_row = [cell.text for cell in positions_table.rows[0].cells]
     assert header_row == POSITIONS_HEADER
-    # Ascendant + 7 planètes classiques + MC + Fortune + Esprit.
-    assert len(positions_table.rows) == 1 + 1 + 7 + 1 + 2
+    # Ascendant + 7 planètes classiques + Nœud Nord + Nœud Sud + MC + Fortune + Esprit + Éros.
+    assert len(positions_table.rows) == 1 + 1 + 7 + 2 + 1 + 3
 
     ascendant_row = [cell.text for cell in positions_table.rows[1].cells]
     assert ascendant_row[0] == "Ascendant"

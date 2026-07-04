@@ -54,6 +54,15 @@ def planet_positions(jd_ut: float, flags: int) -> dict[str, RawPosition]:
     return positions
 
 
+def north_node(jd_ut: float, flags: int) -> RawPosition:
+    """Nœud Nord vrai (TRUE_NODE, pas MEAN_NODE) : le nœud moyen avance de
+    façon monotone et ne station jamais, alors que les deux thèmes de
+    référence montrent des directions "Direct (rare)" / "Rétrograde
+    (usuel)" caractéristiques du nœud vrai, qui oscille et statione."""
+    xx, _retflag = swe.calc_ut(jd_ut, swe.TRUE_NODE, flags)
+    return RawPosition(longitude=xx[0], speed=xx[3])
+
+
 def ascendant_midheaven(jd_ut: float, latitude: float, longitude: float) -> tuple[float, float]:
     """Renvoie (ascendant, milieu du ciel) en longitude écliptique.
 

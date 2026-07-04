@@ -5,15 +5,16 @@ from ..core.observation import Observation, PointPosition
 from . import styles
 
 FEMININE_PLANETS = {"Lune", "Vénus"}
-FEMININE_POINTS = FEMININE_PLANETS | {"Part de Fortune", "Part de l'Esprit"}
+FEMININE_POINTS = FEMININE_PLANETS | {"Part de Fortune", "Part de l'Esprit", "Part d'Éros"}
 
-# Noms affichés avec article, pour les puces d'aspects (les planètes
-# s'affichent sans article, comme dans les documents de référence).
+# Noms affichés avec article, pour les puces d'aspects (les planètes et les
+# nœuds s'affichent sans article, comme dans les documents de référence).
 DISPLAY_NAME_WITH_ARTICLE = {
     "Ascendant": "l'Ascendant",
     "Milieu du Ciel": "le Milieu du Ciel",
     "Part de Fortune": "la Part de Fortune",
     "Part de l'Esprit": "la Part de l'Esprit",
+    "Part d'Éros": "la Part d'Éros",
 }
 
 ASPECT_LABEL = {
@@ -70,16 +71,8 @@ def add_positions_table(document: Document, observation: Observation):
         styles.set_header_cell(cell, text)
     styles.style_table(table, POSITIONS_COLUMN_WIDTHS_DXA)
 
-    points = [
-        observation.ascendant,
-        *observation.planets,
-        observation.midheaven,
-        observation.part_of_fortune,
-        observation.part_of_spirit,
-    ]
-    for point in points:
-        if point is not None:
-            _positions_row(table, point)
+    for point in observation.all_points:
+        _positions_row(table, point)
     return table
 
 

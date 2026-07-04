@@ -34,7 +34,15 @@ class Observation:
     planets: list[PointPosition] = field(default_factory=list)
     part_of_fortune: PointPosition | None = None
     part_of_spirit: PointPosition | None = None
+    part_of_eros: PointPosition | None = None
+    north_node: PointPosition | None = None
+    south_node: PointPosition | None = None
     rulerships: list[Rulership] = field(default_factory=list)
+    # Tous les points ci-dessus, dans l'ordre canonique d'affichage (celui du
+    # tableau des positions des documents de référence) : source unique
+    # utilisée par docgen et par le calcul des amas/aspects, pour éviter que
+    # les deux ne dérivent d'un ordre reconstruit séparément.
+    all_points: list[PointPosition] = field(default_factory=list)
     # Types concrets définis dans core.aspects (SignCluster, ClusterAspect) ;
     # pas d'import direct ici pour éviter une dépendance circulaire
     # (aspects.py importe déjà PointPosition depuis ce module).
@@ -49,6 +57,12 @@ class Observation:
 
     def planet(self, name: str) -> PointPosition:
         for p in self.planets:
+            if p.name == name:
+                return p
+        raise KeyError(name)
+
+    def point(self, name: str) -> PointPosition:
+        for p in self.all_points:
             if p.name == name:
                 return p
         raise KeyError(name)
