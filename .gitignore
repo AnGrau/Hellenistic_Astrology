@@ -17,3 +17,9 @@ data/ephe/*.se1
 /tests/fixtures/
 /References/
 /output/
+
+# Zips locaux pour l'import manuel des skills dans Claude Desktop (voir
+# README.md, section "Skills dans Claude Desktop") : artefacts d'upload,
+# régénérés à la main quand un SKILL.md change, jamais synchronisés
+# automatiquement — pas la peine de les versionner.
+.claude/skills/*.zip
