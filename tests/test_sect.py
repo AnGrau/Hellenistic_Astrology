@@ -1,6 +1,13 @@
 import pytest
 
-from hellenistic_astrology.core.sect import is_diurnal, mercury_is_morning_star, sect_role
+from hellenistic_astrology.core.sect import (
+    BENEFICS,
+    MALEFICS,
+    _SECT_NATURE,
+    is_diurnal,
+    mercury_is_morning_star,
+    sect_role,
+)
 
 
 def test_is_diurnal():
@@ -50,3 +57,14 @@ def test_benefics_and_malefics():
     assert sect_role("Jupiter", diurnal_chart=True) == "Bénéfique de secte"
     assert sect_role("Mars", diurnal_chart=False) == "Maléfique de secte"
     assert sect_role("Saturne", diurnal_chart=True) == "Maléfique de secte"
+
+
+def test_benefics_and_malefics_frozensets_match_sect_nature():
+    # Garde de cohérence (jalon 44) : BENEFICS/MALEFICS sont dérivés de
+    # _SECT_NATURE, mais un futur ajout/renommage dans l'un pourrait
+    # diverger silencieusement de l'autre sans ce test.
+    assert BENEFICS == {p for p, (nature, _) in _SECT_NATURE.items() if nature == "benefic"}
+    assert MALEFICS == {p for p, (nature, _) in _SECT_NATURE.items() if nature == "malefic"}
+    assert BENEFICS == {"Vénus", "Jupiter"}
+    assert MALEFICS == {"Mars", "Saturne"}
+    assert BENEFICS.isdisjoint(MALEFICS)

@@ -48,7 +48,14 @@ def angular_gap(longitude_a: float, longitude_b: float) -> float:
     return diff if diff <= 180 else 360 - diff
 
 
-def _is_applying(longitude_a: float, speed_a: float, longitude_b: float, speed_b: float) -> bool:
+def is_applying(longitude_a: float, speed_a: float, longitude_b: float, speed_b: float) -> bool:
+    """True si l'écart entre A et B se resserre (converge), quelle que soit
+    la planète nominalement "la plus rapide" — teste directement le signe
+    de d(écart)/dt plutôt que de comparer les vitesses absolues, ce qui
+    reste correct même avec une planète rétrograde. Public (jalon 44) :
+    utilisé par `out_of_sign_conjunction` ci-dessous, et par
+    `core.condition` pour l'application de la Lune vers une autre
+    planète (niveau 5 du classement de condition planétaire)."""
     gap = (longitude_b - longitude_a) % 360
     if gap > 180:
         gap -= 360  # écart signé dans (-180, 180] : positif si B est "devant" A.
@@ -79,7 +86,7 @@ def out_of_sign_conjunction(point_a: PointPosition, point_b: PointPosition) -> b
     if angular_gap(longitude_a, longitude_b) >= BOUNDARY_ORB_DEGREES:
         return False
 
-    return _is_applying(longitude_a, point_a.speed, longitude_b, point_b.speed)
+    return is_applying(longitude_a, point_a.speed, longitude_b, point_b.speed)
 
 
 @dataclass(frozen=True)

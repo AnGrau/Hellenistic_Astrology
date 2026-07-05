@@ -79,6 +79,12 @@ class Observation:
     # Configuration d'éclipse à la naissance (Lune proche d'un Nœud et de la
     # syzygie Soleil-Lune correspondante) — voir core.eclipse.
     eclipse: EclipseConfiguration | None = None
+    # Grille de condition planétaire (jalon 44) : type concret
+    # `condition.PlanetaryCondition`, pas importé ici pour éviter une
+    # dépendance circulaire — même raison que `clusters`/`cluster_aspects`
+    # ci-dessus (`condition.py` a besoin de `PointPosition` depuis ce
+    # module). Voir core.condition pour le détail.
+    planetary_conditions: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

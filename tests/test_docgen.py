@@ -3,6 +3,7 @@ from datetime import datetime
 from docx import Document
 import pytest
 
+from hellenistic_astrology.core import condition as condition_module
 from hellenistic_astrology.core import dignities as dignities_module
 from hellenistic_astrology.core.aspects import ClusterAspect, SignCluster, sign_aspect
 from hellenistic_astrology.core.chart import build_observation
@@ -14,6 +15,7 @@ from hellenistic_astrology.core.zodiacal_releasing import ReleasingChapter, Rele
 from hellenistic_astrology.docgen.builder import (
     ASPECT_GLYPH,
     MINOR_DIGNITIES_HEADER,
+    PLANETARY_CONDITION_HEADER,
     POSITIONS_HEADER,
     RULERSHIPS_HEADER,
     ZODIACAL_RELEASING_HEADER,
@@ -26,6 +28,7 @@ from hellenistic_astrology.docgen.builder import (
     add_luminaries_section,
     add_minor_dignities_table,
     add_nodes_and_parts_section,
+    add_planetary_condition_table,
     add_positions_table,
     add_zodiacal_releasing_table,
     build_observation_document,
@@ -717,7 +720,7 @@ def test_build_observation_document_structure(fixture_name):
         "Phase 1 — Observation",
         "Phase 2 — Fiche technique",
     ]
-    assert len(document.tables) == 6
+    assert len(document.tables) == 7
 
     (
         positions_table,
@@ -726,6 +729,7 @@ def test_build_observation_document_structure(fixture_name):
         aspectarian_table,
         zr_fortune_table,
         zr_spirit_table,
+        planetary_condition_table,
     ) = document.tables
 
     header_row = [cell.text for cell in positions_table.rows[0].cells]
@@ -791,13 +795,14 @@ def test_build_observation_document_structure(fixture_name):
         )
 
     heading2_texts = [p.text for p in document.paragraphs if p.style.name == "Heading 2"]
-    assert heading2_texts[-6:] == [
+    assert heading2_texts[-7:] == [
         "Répartition élémentaire et modale",
         "Angularité",
         "Dignités et réceptions",
         "Ascendant et son maître",
         "Luminaires",
         "Nœuds et Parts",
+        "Condition planétaire",
     ]
     assert "Dignités mineures (triplicité, bornes, décans)" in heading2_texts
     assert "Aspects par signe relevés" in heading2_texts
@@ -1007,7 +1012,42 @@ def test_build_observation_document_structure(fixture_name):
             "écart Soleil-Lune de 26°32' par rapport à la Pleine Lune.",
         ],
     }
+    planetary_condition_heading_index = next(
+        i
+        for i, p in enumerate(all_paragraphs)
+        if p.style.name == "Heading 2" and p.text == "Condition planétaire"
+    )
     nodes_and_parts_paragraphs = [
-        p.text for p in all_paragraphs[nodes_and_parts_heading_index + 1 :] if p.text
+        p.text
+        for p in all_paragraphs[nodes_and_parts_heading_index + 1 : planetary_condition_heading_index]
+        if p.text
     ]
     assert nodes_and_parts_paragraphs == expected_nodes_and_parts_paragraphs[fixture_name]
+
+    # "Condition planétaire" recoupée structurellement (pas mot pour mot :
+    # aucune fixture Anthony/Liam ne documente cette grille, jalon 44) contre
+    # le même calcul core.condition.compute_planetary_conditions, appliqué
+    # aux positions réellement calculées — teste le branchement docgen, pas
+    # l'exactitude de la grille elle-même (déjà couverte par
+    # tests/test_condition.py).
+    assert [cell.text for cell in planetary_condition_table.rows[0].cells] == PLANETARY_CONDITION_HEADER
+    assert len(planetary_condition_table.rows) == 1 + 7
+    expected_conditions = {
+        c.planet: c
+        for c in condition_module.compute_planetary_conditions(
+            observation.planets, observation.mutual_receptions, observation.solar_proximity
+        )
+    }
+    for row in planetary_condition_table.rows[1:]:
+        planet_name, aided_cell, harmed_cell, enclosure_cell, solar_cell, rank_cell = (c.text for c in row.cells)
+        expected = expected_conditions[planet_name]
+        assert aided_cell == (
+            ", ".join(f"{i.source} ({i.aspect.lower()})" for i in expected.bonification_corruption.aided_by) or "—"
+        )
+        assert harmed_cell == (
+            ", ".join(f"{i.source} ({i.aspect.lower()})" for i in expected.bonification_corruption.harmed_by) or "—"
+        )
+        assert enclosure_cell == (expected.enclosure.category.capitalize() if expected.enclosure.category else "—")
+        expected_solar = expected.solar_phenomenon.tier if expected.solar_phenomenon else None
+        assert solar_cell == (expected_solar or "—")
+        assert rank_cell == str(expected.rank)

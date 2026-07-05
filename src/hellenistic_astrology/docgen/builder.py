@@ -12,6 +12,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches
 
 from ..core.aspects import ClusterAspect, SignCluster, sign_aspect
+from ..core.condition import PlanetaryCondition
 from ..core.dignities import DOMICILES, MutualReception
 from ..core.eclipse import SOLAR_ECLIPSE_ORB_DEGREES
 from ..core.ephemeris import CLASSICAL_PLANETS
@@ -79,6 +80,12 @@ ZODIACAL_RELEASING_HEADER = [
     "Niveau", "Signe", "Maître", "Début", "Fin", "Culminante", "Relâchement du lien",
 ]
 ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA = [900, 1600, 1600, 1500, 1500, 1300, 1800]
+
+# Table de condition planétaire (jalon 44) : bonification/corruption,
+# enclosure, phénomène solaire imbriqué, rang (1 = plus favorable, 7 = moins
+# favorable) issus de core.condition.compute_planetary_conditions.
+PLANETARY_CONDITION_HEADER = ["Astre", "Aidé par", "Nui par", "Enclosure", "Phénomène solaire", "Rang"]
+PLANETARY_CONDITION_COLUMN_WIDTHS_DXA = [1300, 2300, 2300, 1700, 1900, 900]
 
 # Ordre confirmé par les deux documents de référence (Pérégrin traité à part,
 # voir add_dignities_and_receptions_section) ; Domicile jamais illustré dans
@@ -185,6 +192,49 @@ def add_minor_dignities_table(document: Document, observation: Observation):
         cells[1].text = planet.triplicity_dignity or "—"
         cells[2].text = planet.bound_dignity or "—"
         cells[3].text = planet.decan_dignity or "—"
+    return table
+
+
+def _aspect_influence_text(influences: tuple) -> str:
+    if not influences:
+        return "—"
+    return ", ".join(f"{i.source} ({i.aspect.lower()})" for i in influences)
+
+
+def add_planetary_condition_table(document: Document, observation: Observation):
+    """Table de condition planétaire (jalon 44) : bonification/corruption
+    par aspect, enclosure par signe, phénomène solaire imbriqué (cazimi/
+    combustion/sous les rayons — vient s'ajouter à la mention "sous les
+    rayons" à 15° déjà présente dans "Dignités et réceptions", pas la
+    remplacer), et rang (1 = plus favorable, 7 = moins favorable) issus de
+    `core.condition.compute_planetary_conditions`. Rendu dans l'ordre déjà
+    utilisé par `observation.planets` (pas dans l'ordre du rang) — cohérent
+    avec les autres tables planète par planète (`add_minor_dignities_table`).
+    Aucune fixture Anthony/Liam ne documente cette grille (voir CLAUDE.md,
+    jalon 44) ; ombrage du rang extrême, meilleur/pire, même mécanisme que
+    `DIGNITY_SHADING`."""
+    conditions_by_planet: dict[str, PlanetaryCondition] = {
+        c.planet: c for c in observation.planetary_conditions
+    }
+
+    table = document.add_table(rows=1, cols=len(PLANETARY_CONDITION_HEADER))
+    for cell, text in zip(table.rows[0].cells, PLANETARY_CONDITION_HEADER):
+        styles.set_header_cell(cell, text)
+    styles.style_table(table, PLANETARY_CONDITION_COLUMN_WIDTHS_DXA)
+
+    for planet in observation.planets:
+        condition = conditions_by_planet[planet.name]
+        cells = table.add_row().cells
+        cells[0].text = planet.name
+        cells[1].text = _aspect_influence_text(condition.bonification_corruption.aided_by)
+        cells[2].text = _aspect_influence_text(condition.bonification_corruption.harmed_by)
+        cells[3].text = condition.enclosure.category.capitalize() if condition.enclosure.category else "—"
+        cells[4].text = condition.solar_phenomenon.tier if condition.solar_phenomenon and condition.solar_phenomenon.tier else "—"
+        cells[5].text = str(condition.rank)
+        if condition.rank == 1:
+            styles.shade_cell(cells[5], styles.DIGNITY_FAVORABLE_SHADING)
+        elif condition.rank == len(observation.planets):
+            styles.shade_cell(cells[5], styles.DIGNITY_UNFAVORABLE_SHADING)
     return table
 
 
@@ -833,5 +883,8 @@ def build_observation_document(observation: Observation) -> Document:
 
     document.add_heading("Nœuds et Parts", level=2)
     add_nodes_and_parts_section(document, observation)
+
+    document.add_heading("Condition planétaire", level=2)
+    add_planetary_condition_table(document, observation)
 
     return document

@@ -23,6 +23,15 @@ _SECT_NATURE: dict[str, tuple[str, str | None]] = {
     "Saturne": ("malefic", "diurnal"),
 }
 
+# Classification bénéfique/maléfique seule (sans la dimension de secte),
+# dérivée de `_SECT_NATURE` plutôt que dupliquée : source unique de vérité
+# pour tout module qui a besoin de cette classification sans passer par
+# `sect_role()` (ex. `core.condition`, jalon 44 — bonification/corruption
+# par aspect, qui a besoin de savoir "Vénus/Jupiter bénéfiques,
+# Mars/Saturne maléfiques" indépendamment de toute secte de carte).
+BENEFICS = frozenset(planet for planet, (nature, _) in _SECT_NATURE.items() if nature == "benefic")
+MALEFICS = frozenset(planet for planet, (nature, _) in _SECT_NATURE.items() if nature == "malefic")
+
 
 def mercury_is_morning_star(mercury_longitude: float, sun_longitude: float) -> bool:
     """True si Mercure est étoile du matin (se lève avant le Soleil), False
