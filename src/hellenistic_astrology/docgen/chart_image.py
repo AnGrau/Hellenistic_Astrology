@@ -85,22 +85,33 @@ RETROGRADE_MARK = "℞"
 _SIGN_RING_INNER = 0.78
 _HOUSE_NUMBER_RADIUS = 0.745
 _ASPECT_HUB_RADIUS = 0.25
-_POINT_BASE_RADIUS = 0.60
+# Jalon 43 : l'ensemble de cette section (rayons, pas, décalage) a été
+# recalculé comme un système, pas constante par constante — augmenter un
+# seul décalage sans revoir le pas radial déplace juste le chevauchement
+# ailleurs (vécu en pratique : un premier essai à décalage=0.10/pas=0.14
+# faisait recouvrir les numéros de maison par les étiquettes de palier 0,
+# et les étiquettes de palier N+1 par les marqueurs du palier N). Les
+# contraintes tenues simultanément, toutes mesurées directement (pas
+# devinées) sur la boîte réellement rendue la plus large (glyphe
+# rétrograde, ex. "♄℞" — plus large qu'un glyphe simple ou qu'un label de
+# Lot) via `patch.get_window_extent` :
+#   1. décalage marqueur -> étiquette > demi-diagonale de la boîte (sinon
+#      une étiquette recouvre son PROPRE marqueur, jalon 43 : Part d'Éros
+#      chez Anthony) — demi-diagonale mesurée ≈0,076 (police normale),
+#      ≈0,051 (police resserrée).
+#   2. pas radial > décalage + demi-diagonale (sinon l'étiquette du palier
+#      N+1 recouvre le marqueur du palier N, plus proche du centre).
+#   3. rayon de base + décalage + demi-diagonale < rayon des numéros de
+#      maison, avec une marge (sinon l'étiquette du palier 0 recouvre les
+#      numéros de maison, juste au-dessus).
+_POINT_BASE_RADIUS = 0.55
 # Rayon le plus bas qu'un amas peut atteindre en s'étageant (jalon 36) :
 # garde une marge sûre au-dessus de l'anneau d'aspect ci-dessus, quel que
 # soit le nombre de membres.
 _POINT_INNER_FLOOR = 0.28
-# Pas radial et décalage d'étiquette calibrés en mesurant directement (pas
-# devinés) la largeur/hauteur réelle des étiquettes les plus larges
-# (`_POINT_LABEL_OFFSET`/`_POINT_RADIUS_STEP` pour "Fort."/"Esp."/"Éros" en
-# police normale, `..._CROWDED` pour la police resserrée) via
-# `Text.get_window_extent` — le chevauchement entre le marqueur d'un membre
-# et l'étiquette du suivant dépend de la LARGEUR du texte, pas seulement de
-# sa hauteur, dès que l'amas ne tombe pas exactement sur l'axe vertical du
-# repère (voir jalon 36 pour le détail du calcul).
-_POINT_RADIUS_STEP = 0.14
-_POINT_LABEL_OFFSET = 0.05
-_POINT_LABEL_OFFSET_CROWDED = 0.03
+_POINT_RADIUS_STEP = 0.18
+_POINT_LABEL_OFFSET = 0.09
+_POINT_LABEL_OFFSET_CROWDED = 0.06
 _POINT_FONTSIZE_GLYPH = 12
 _POINT_FONTSIZE_LOT = 8
 _POINT_FONTSIZE_GLYPH_CROWDED = 8

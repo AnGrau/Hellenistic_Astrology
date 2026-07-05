@@ -76,6 +76,48 @@ def _wheel_overlaps(fig) -> list[tuple[int, int]]:
     ]
 
 
+def _markers_hidden_by_own_label(fig) -> list[str]:
+    """Noms (gid) des points dont le marqueur tombe à l'intérieur de la
+    boîte de sa PROPRE étiquette — un vrai défaut depuis que les étiquettes
+    ont un fond opaque (jalon 37) : avant, marqueur et étiquette pouvaient
+    se chevaucher sans problème (texte sans fond), d'où l'exclusion
+    délibérée de cette paire (même `gid`) dans `_wheel_overlaps`. Ce
+    contrôle séparé rattrape le cas où cette exclusion masquait un vrai
+    problème (jalon 43 : Part d'Éros chez Anthony, marqueur entièrement
+    recouvert par sa propre boîte d'étiquette, découvert par retour
+    utilisateur direct)."""
+    ax = fig.axes[0]
+    renderer = fig.canvas.get_renderer()
+    label_boxes_by_gid = {
+        text.get_gid(): text.get_bbox_patch().get_window_extent(renderer=renderer)
+        for text in ax.texts
+        if text.get_gid() and text.get_gid().startswith("point:") and text.get_bbox_patch() is not None
+    }
+    hidden = []
+    for line in ax.lines:
+        gid = line.get_gid()
+        if not gid or gid not in label_boxes_by_gid:
+            continue
+        (theta, radius), = line.get_xydata()
+        px, py = ax.transData.transform((theta, radius))
+        if label_boxes_by_gid[gid].contains(px, py):
+            hidden.append(gid)
+    return hidden
+
+
+@pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
+def test_render_chart_wheel_markers_not_hidden_by_own_label(fixture_name):
+    fixture = load_fixture(fixture_name)
+    observation = build_observation(birth_data_from_fixture(fixture))
+
+    fig = chart_image._build_chart_wheel_figure(observation)
+    fig.canvas.draw()
+    hidden = _markers_hidden_by_own_label(fig)
+    plt.close(fig)
+
+    assert hidden == []
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_render_chart_wheel_labels_do_not_overlap(fixture_name):
     # Détection de chevauchement par bounding box (matplotlib), pas une
