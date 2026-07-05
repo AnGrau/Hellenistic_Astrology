@@ -46,6 +46,19 @@ def _wheel_label_and_marker_boxes(fig):
     return boxes
 
 
+def _wheel_overlaps(fig) -> list[tuple[int, int]]:
+    """Paires d'index de `_wheel_label_and_marker_boxes(fig)` dont les
+    bounding boxes se chevauchent, hors marqueur/étiquette d'un même point
+    (même `gid`, chevauchement attendu par construction)."""
+    boxes = _wheel_label_and_marker_boxes(fig)
+    return [
+        (i, j)
+        for i in range(len(boxes))
+        for j in range(i + 1, len(boxes))
+        if boxes[i][1].overlaps(boxes[j][1]) and not (boxes[i][0] and boxes[i][0] == boxes[j][0])
+    ]
+
+
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])
 def test_render_chart_wheel_labels_do_not_overlap(fixture_name):
     # Détection de chevauchement par bounding box (matplotlib), pas une
@@ -60,31 +73,71 @@ def test_render_chart_wheel_labels_do_not_overlap(fixture_name):
 
     fig = chart_image._build_chart_wheel_figure(observation)
     fig.canvas.draw()
-    boxes = _wheel_label_and_marker_boxes(fig)
-
-    overlaps = [
-        (i, j)
-        for i in range(len(boxes))
-        for j in range(i + 1, len(boxes))
-        if boxes[i][1].overlaps(boxes[j][1]) and not (boxes[i][0] and boxes[i][0] == boxes[j][0])
-    ]
+    overlaps = _wheel_overlaps(fig)
     plt.close(fig)
 
     assert overlaps == []
 
 
-@pytest.mark.parametrize("member_count", range(1, 7))
-def test_cluster_point_radii_stays_above_aspect_hub(member_count):
-    # Un amas resserré (jalon 36 : la Part de Fortune d'Anthony, 4e membre
-    # du même signe, apparaissait visuellement à l'intérieur du diagramme
-    # d'aspects) ne doit jamais placer un membre sous l'anneau d'aspect,
-    # quel que soit le nombre de membres.
-    radii, _ = chart_image._cluster_point_radii(member_count)
+def test_render_chart_wheel_lone_points_in_adjacent_signs_do_not_overlap():
+    # Retour utilisateur direct sur un thème réel (jalon 40) : deux amas à
+    # un seul membre chacun, dans des signes adjacents mais à seulement 2°
+    # réels de la frontière commune, se chevauchaient avant la correction —
+    # l'étagement par amas de signe (jalon 36) ne protégeait que les
+    # membres d'un même amas, pas deux amas voisins proches en angle.
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    soleil = PointPosition(name="Soleil", sign="Taureau", degree_in_sign=29, house=2)
+    lune = PointPosition(name="Lune", sign="Gémeaux", degree_in_sign=1, house=3)
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=midheaven,
+        planets=[soleil, lune],
+        all_points=[ascendant, midheaven, soleil, lune],
+        clusters=[
+            SignCluster(sign="Taureau", house=2, members=("Soleil",)),
+            SignCluster(sign="Gémeaux", house=3, members=("Lune",)),
+        ],
+    )
 
-    assert len(radii) == member_count
+    fig = chart_image._build_chart_wheel_figure(observation)
+    fig.canvas.draw()
+    overlaps = _wheel_overlaps(fig)
+    plt.close(fig)
+
+    assert overlaps == []
+
+
+@pytest.mark.parametrize("tier_count", range(1, 7))
+def test_tier_radii_stays_above_aspect_hub(tier_count):
+    # Un ensemble resserré (jalon 36 : la Part de Fortune d'Anthony, 4e
+    # membre du même signe, apparaissait visuellement à l'intérieur du
+    # diagramme d'aspects) ne doit jamais placer un palier sous l'anneau
+    # d'aspect, quel que soit le nombre de paliers réellement utilisés.
+    radii, _ = chart_image._tier_radii(tier_count)
+
+    assert len(radii) == tier_count
     assert radii[0] == chart_image._POINT_BASE_RADIUS
     assert all(r > chart_image._ASPECT_HUB_RADIUS for r in radii)
     assert radii == sorted(radii, reverse=True)
+
+
+def test_assign_point_tiers_separates_angularly_close_points():
+    tiers = chart_image._assign_point_tiers([("A", 10.0), ("B", 12.0)])
+    assert tiers["A"] != tiers["B"]
+
+
+def test_assign_point_tiers_reuses_base_tier_when_far_apart():
+    tiers = chart_image._assign_point_tiers([("A", 10.0), ("B", 200.0)])
+    assert tiers["A"] == 0
+    assert tiers["B"] == 0
+
+
+def test_assign_point_tiers_handles_wraparound_at_0_360():
+    tiers = chart_image._assign_point_tiers([("A", 358.0), ("B", 2.0)])
+    assert tiers["A"] != tiers["B"]
 
 
 @pytest.mark.parametrize("fixture_name", ["anthony", "liam"])

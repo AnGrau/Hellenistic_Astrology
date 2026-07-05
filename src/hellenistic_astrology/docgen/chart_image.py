@@ -105,34 +105,83 @@ _POINT_FONTSIZE_GLYPH = 12
 _POINT_FONTSIZE_LOT = 8
 _POINT_FONTSIZE_GLYPH_CROWDED = 8
 _POINT_FONTSIZE_LOT_CROWDED = 6
+# Deux points à moins de cet écart angulaire réel se disputeraient le même
+# rayon (jalon 40) : calibré à partir de la même mesure de largeur
+# d'étiquette que le jalon 36 (~0.05 en unités de rayon pour "Fort."/"Esp."/
+# "Éros" à la police normale, à _POINT_BASE_RADIUS=0.60) convertie en degrés
+# (arc ≈ rayon × angle en radians), avec une marge de sécurité, puis
+# revalidé empiriquement par la même détection de chevauchement par
+# bounding box que les jalons 35/36 (voir tests/test_chart_image.py).
+_ANGULAR_COLLISION_DEGREES = 9.0
 
 
-def _cluster_point_radii(member_count: int) -> tuple[list[float], bool]:
-    """Rayons radiaux pour les membres d'un même amas, du plus externe
-    (premier membre) au plus interne, plus un indicateur "crowded" (amas
-    resserré : police et décalage d'étiquette réduits, voir
-    `render_chart_wheel`).
+def _angular_distance_degrees(a: float, b: float) -> float:
+    diff = abs(a - b) % 360.0
+    return min(diff, 360.0 - diff)
 
-    Le pas `_POINT_RADIUS_STEP` s'applique tel quel tant que l'amas tient
-    dans la bande [`_POINT_BASE_RADIUS`, `_POINT_INNER_FLOOR`] ; au-delà (ex.
-    un amas à 4 membres ou plus, déjà observé sur le thème d'Anthony —
-    Soleil/Vénus/Jupiter/Part de Fortune en Scorpion), le pas se resserre
-    pour ne jamais descendre sous `_POINT_INNER_FLOOR` — ce qui, sans cette
-    compression, faisait apparaître le membre le plus interne (la Part de
-    Fortune, dans ce cas précis) visuellement à l'intérieur du diagramme
-    d'aspects, corrigé au jalon 36 après un retour utilisateur direct sur le
-    document généré."""
-    if member_count <= 1:
+
+def _assign_point_tiers(entries: list[tuple[str, float]]) -> dict[str, int]:
+    """Attribue un palier entier (0 = rayon de base, 1 = un cran plus interne,
+    etc.) à chaque point d'affichage, un par un dans l'ordre des angles, en
+    ne considérant que la proximité angulaire réelle
+    (`_ANGULAR_COLLISION_DEGREES`) — pas l'appartenance à un même amas de
+    signe (jalon 36), qui ne garantissait ni qu'un amas soit visuellement
+    resserré (deux membres peuvent être à près de 30° l'un de l'autre dans
+    le même signe) ni que deux amas de signes *voisins* soient assez
+    éloignés l'un de l'autre : deux amas à un seul membre chacun, dans des
+    signes adjacents mais à quelques degrés réels de la frontière commune,
+    tombaient tous les deux sur le rayon de base et se chevauchaient malgré
+    l'étagement par amas (retour utilisateur direct sur un thème réel,
+    jalon 40).
+
+    `entries` : liste de (nom, thêta en degrés). Premier palier disponible
+    qui n'entre pas en collision avec un point déjà placé à moins de
+    `_ANGULAR_COLLISION_DEGREES` — glouton, dans l'ordre des angles
+    croissants, donc pas nécessairement optimal (un point peut recevoir un
+    palier plus profond que strictement nécessaire) mais toujours sûr, dans
+    le même esprit que l'étagement systématique déjà en place depuis le
+    jalon 36."""
+    ordered = sorted(entries, key=lambda entry: entry[1] % 360.0)
+    tiers: dict[str, int] = {}
+    placed: list[tuple[float, int]] = []
+    for name, theta in ordered:
+        used_nearby = {
+            tier
+            for other_theta, tier in placed
+            if _angular_distance_degrees(theta, other_theta) < _ANGULAR_COLLISION_DEGREES
+        }
+        tier = 0
+        while tier in used_nearby:
+            tier += 1
+        tiers[name] = tier
+        placed.append((theta, tier))
+    return tiers
+
+
+def _tier_radii(tier_count: int) -> tuple[list[float], bool]:
+    """Rayons radiaux pour `tier_count` paliers (du plus externe, palier 0,
+    au plus interne), plus un indicateur "crowded" (police et décalage
+    d'étiquette réduits, voir `render_chart_wheel`) — même logique de
+    compression que l'ancien `_cluster_point_radii` (jalon 36), désormais
+    appliquée au nombre de paliers réellement utilisés sur l'ensemble de la
+    roue (`_assign_point_tiers`) plutôt qu'au nombre de membres d'un seul
+    amas de signe.
+
+    Le pas `_POINT_RADIUS_STEP` s'applique tel quel tant que l'ensemble
+    tient dans la bande [`_POINT_BASE_RADIUS`, `_POINT_INNER_FLOOR`] ;
+    au-delà, le pas se resserre pour ne jamais descendre sous
+    `_POINT_INNER_FLOOR`, quel que soit le nombre de paliers."""
+    if tier_count <= 1:
         return [_POINT_BASE_RADIUS], False
 
-    natural_span = _POINT_RADIUS_STEP * (member_count - 1)
+    natural_span = _POINT_RADIUS_STEP * (tier_count - 1)
     if _POINT_BASE_RADIUS - natural_span >= _POINT_INNER_FLOOR:
         step = _POINT_RADIUS_STEP
         crowded = False
     else:
-        step = (_POINT_BASE_RADIUS - _POINT_INNER_FLOOR) / (member_count - 1)
+        step = (_POINT_BASE_RADIUS - _POINT_INNER_FLOOR) / (tier_count - 1)
         crowded = True
-    return [_POINT_BASE_RADIUS - idx * step for idx in range(member_count)], crowded
+    return [_POINT_BASE_RADIUS - idx * step for idx in range(tier_count)], crowded
 
 
 def _figure_to_png_bytes(fig) -> bytes:
@@ -141,6 +190,15 @@ def _figure_to_png_bytes(fig) -> bytes:
     plt.close(fig)
     buffer.seek(0)
     return buffer.read()
+
+
+def _wheel_theta_degrees(longitude_degrees: float, ascendant_longitude: float) -> float:
+    """Angle en degrés (0-360) pour une longitude écliptique donnée, dans le
+    repère ancré sur l'Ascendant décrit par `_wheel_theta` — séparé de la
+    conversion en radians pour que `_assign_point_tiers` (comparaisons
+    angulaires en degrés) n'ait pas à repasser par un aller-retour
+    radians -> degrés."""
+    return (longitude_degrees - ascendant_longitude + 180) % 360
 
 
 def _wheel_theta(longitude_degrees: float, ascendant_longitude: float) -> float:
@@ -152,7 +210,7 @@ def _wheel_theta(longitude_degrees: float, ascendant_longitude: float) -> float:
     dans le sens anti-horaire. Avec `theta_zero_location("E")` et
     `theta_direction(1)` (sens trigonométrique standard), un décalage de
     +180° place la longitude de l'Ascendant lui-même à l'Ouest (gauche)."""
-    return np.radians((longitude_degrees - ascendant_longitude + 180) % 360)
+    return np.radians(_wheel_theta_degrees(longitude_degrees, ascendant_longitude))
 
 
 def render_chart_wheel(observation: Observation) -> bytes:
@@ -229,52 +287,63 @@ def _build_chart_wheel_figure(observation: Observation):
         theta = _wheel_theta(i * 30, ascendant_longitude)
         ax.plot([theta, theta], [_SIGN_RING_INNER, 1.0], color="black", linewidth=0.6)
 
-    # Points, groupés par amas pour étager le rayon et éviter le
-    # chevauchement des glyphes (les membres d'un même amas partagent un
-    # signe donc des longitudes proches — parfois à moins d'un degré
-    # d'écart réel, voir `_cluster_point_radii`). Chaque marqueur et son
-    # étiquette partagent un `gid` (`point:<nom>`) : uniquement pour que
+    # Points : rayon attribué par proximité angulaire réelle sur l'ensemble
+    # de la roue (`_assign_point_tiers`, jalon 40), pas par appartenance à un
+    # même amas de signe (jalon 36) — deux amas de signes voisins peuvent
+    # être à quelques degrés réels l'un de l'autre et se disputer le même
+    # rayon tout autant que deux membres d'un même amas. Chaque marqueur et
+    # son étiquette partagent un `gid` (`point:<nom>`) : uniquement pour que
     # les tests de non-chevauchement (jalon 36) puissent distinguer un
     # marqueur et sa propre étiquette (attendus proches l'un de l'autre)
     # d'un chevauchement avec un point différent (un vrai défaut visuel).
     points_by_name = {p.name: p for p in observation.all_points}
     excluded_from_dots = {"Ascendant", "Milieu du Ciel"}
-    for cluster in observation.clusters:
-        members = [m for m in cluster.members if m not in excluded_from_dots]
-        radii, crowded = _cluster_point_radii(len(members))
-        label_offset = _POINT_LABEL_OFFSET_CROWDED if crowded else _POINT_LABEL_OFFSET
-        for idx, name in enumerate(members):
-            point = points_by_name[name]
-            theta = _wheel_theta(longitude_of(point.sign, point.degree_in_sign), ascendant_longitude)
-            radius = radii[idx]
-            label = POINT_GLYPHS.get(name) or POINT_LABELS.get(name, name[:4])
-            if point.retrograde:
-                label += RETROGRADE_MARK
-            is_glyph = name in POINT_GLYPHS
-            if crowded:
-                fontsize = _POINT_FONTSIZE_GLYPH_CROWDED if is_glyph else _POINT_FONTSIZE_LOT_CROWDED
-            else:
-                fontsize = _POINT_FONTSIZE_GLYPH if is_glyph else _POINT_FONTSIZE_LOT
-            # Fil de rappel entre le marqueur et l'anneau des signes : purement
-            # décoratif (le marqueur est déjà à la longitude réelle du point,
-            # l'étagement du jalon 36 ne modifie que le rayon, jamais l'angle).
-            # Sans `gid` "point:*" volontairement : reste hors du test de
-            # non-chevauchement (jalons 35/36), qui ne porte que sur les
-            # étiquettes et marqueurs eux-mêmes, pas sur ce fil décoratif.
-            ax.plot(
-                [theta, theta], [radius, _SIGN_RING_INNER - 0.02],
-                color=WHEEL_LEADER_LINE_COLOR, linewidth=0.5, alpha=0.5, zorder=1,
-            )
-            ax.plot(theta, radius, "o", color=WHEEL_POINT_MARKER_COLOR, markersize=4, gid=f"point:{name}", zorder=10)
-            ax.text(
-                theta, radius + label_offset, label, ha="center", va="center",
-                fontsize=fontsize, color=WHEEL_POINT_LABEL_COLOR, fontweight="bold",
-                gid=f"point:{name}", zorder=11,
-                bbox=dict(
-                    boxstyle="round,pad=0.15", facecolor=WHEEL_POINT_BOX_FACECOLOR,
-                    edgecolor=WHEEL_POINT_BOX_EDGECOLOR, linewidth=0.8, alpha=0.92,
-                ),
-            )
+    display_names = [
+        name for cluster in observation.clusters for name in cluster.members if name not in excluded_from_dots
+    ]
+    theta_degrees_by_name = {
+        name: _wheel_theta_degrees(
+            longitude_of(points_by_name[name].sign, points_by_name[name].degree_in_sign), ascendant_longitude
+        )
+        for name in display_names
+    }
+    tiers = _assign_point_tiers(list(theta_degrees_by_name.items()))
+    tier_count = max(tiers.values(), default=-1) + 1
+    radii_by_tier, crowded = _tier_radii(tier_count)
+    label_offset = _POINT_LABEL_OFFSET_CROWDED if crowded else _POINT_LABEL_OFFSET
+
+    for name in display_names:
+        point = points_by_name[name]
+        theta = np.radians(theta_degrees_by_name[name])
+        radius = radii_by_tier[tiers[name]]
+        label = POINT_GLYPHS.get(name) or POINT_LABELS.get(name, name[:4])
+        if point.retrograde:
+            label += RETROGRADE_MARK
+        is_glyph = name in POINT_GLYPHS
+        if crowded:
+            fontsize = _POINT_FONTSIZE_GLYPH_CROWDED if is_glyph else _POINT_FONTSIZE_LOT_CROWDED
+        else:
+            fontsize = _POINT_FONTSIZE_GLYPH if is_glyph else _POINT_FONTSIZE_LOT
+        # Fil de rappel entre le marqueur et l'anneau des signes : purement
+        # décoratif (le marqueur est déjà à la longitude réelle du point,
+        # l'étagement ne modifie que le rayon, jamais l'angle). Sans `gid`
+        # "point:*" volontairement : reste hors du test de non-chevauchement
+        # (jalons 35/36), qui ne porte que sur les étiquettes et marqueurs
+        # eux-mêmes, pas sur ce fil décoratif.
+        ax.plot(
+            [theta, theta], [radius, _SIGN_RING_INNER - 0.02],
+            color=WHEEL_LEADER_LINE_COLOR, linewidth=0.5, alpha=0.5, zorder=1,
+        )
+        ax.plot(theta, radius, "o", color=WHEEL_POINT_MARKER_COLOR, markersize=4, gid=f"point:{name}", zorder=10)
+        ax.text(
+            theta, radius + label_offset, label, ha="center", va="center",
+            fontsize=fontsize, color=WHEEL_POINT_LABEL_COLOR, fontweight="bold",
+            gid=f"point:{name}", zorder=11,
+            bbox=dict(
+                boxstyle="round,pad=0.15", facecolor=WHEEL_POINT_BOX_FACECOLOR,
+                edgecolor=WHEEL_POINT_BOX_EDGECOLOR, linewidth=0.8, alpha=0.92,
+            ),
+        )
 
     # Les quatre angles : Ascendant/Descendant et Milieu du Ciel/Fond du
     # Ciel sont chacun deux points diamétralement opposés (+180° de
@@ -290,8 +359,16 @@ def _build_chart_wheel_figure(observation: Observation):
     ]
     for longitude, label in angles:
         theta = _wheel_theta(longitude, ascendant_longitude)
-        ax.plot([theta, theta], [0, _SIGN_RING_INNER], color=WHEEL_ANGLE_COLOR, linewidth=1.4)
-        ax.text(theta, _SIGN_RING_INNER - 0.05, label, ha="center", va="center", fontsize=10, fontweight="bold", color=WHEEL_ANGLE_COLOR)
+        ax.plot([theta, theta], [0, _SIGN_RING_INNER], color=WHEEL_ANGLE_COLOR, linewidth=1.4, zorder=3)
+        # Fond opaque derrière l'étiquette (jalon 40) : sans lui, la ligne —
+        # de la même couleur, tracée jusqu'au même rayon que le texte — se
+        # voyait par transparence entre les lettres ("AC"/"DC"/"MC"/"IC"
+        # barrés, retour utilisateur direct sur un thème réel).
+        ax.text(
+            theta, _SIGN_RING_INNER - 0.05, label, ha="center", va="center", fontsize=10, fontweight="bold",
+            color=WHEEL_ANGLE_COLOR, zorder=6,
+            bbox=dict(boxstyle="round,pad=0.15", facecolor=WHEEL_BACKGROUND_COLOR, edgecolor="none"),
+        )
 
     # Lignes d'aspect entre amas, à l'angle médian de chaque signe (pas la
     # longitude réelle des points : ce projet calcule des aspects par
