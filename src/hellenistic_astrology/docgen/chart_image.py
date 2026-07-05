@@ -106,13 +106,19 @@ _POINT_FONTSIZE_LOT = 8
 _POINT_FONTSIZE_GLYPH_CROWDED = 8
 _POINT_FONTSIZE_LOT_CROWDED = 6
 # Deux points à moins de cet écart angulaire réel se disputeraient le même
-# rayon (jalon 40) : calibré à partir de la même mesure de largeur
-# d'étiquette que le jalon 36 (~0.05 en unités de rayon pour "Fort."/"Esp."/
-# "Éros" à la police normale, à _POINT_BASE_RADIUS=0.60) convertie en degrés
-# (arc ≈ rayon × angle en radians), avec une marge de sécurité, puis
-# revalidé empiriquement par la même détection de chevauchement par
-# bounding box que les jalons 35/36 (voir tests/test_chart_image.py).
-_ANGULAR_COLLISION_DEGREES = 9.0
+# rayon (jalon 40). Calibré au jalon 42 sur une mesure directe (pas une
+# estimation) de la largeur réellement rendue de l'étiquette la plus large
+# ("Fort.", boîte arrondie comprise) via `patch.get_window_extent` — jalon
+# 40 s'était calibré sur la largeur du seul *texte* (~0.05 en unités de
+# rayon), sans compter le padding de la boîte ajoutée au jalon 37, ce que
+# `Text.get_window_extent` ne mesure jamais (angle mort corrigé dans
+# `tests/test_chart_image.py::_text_window_extent`). Mesuré : ~10,75°
+# d'empreinte angulaire pour "Fort." à `_POINT_BASE_RADIUS` — deux
+# étiquettes de cette largeur au même palier se touchent donc déjà à ce
+# seuil-là ; 13° laisse une marge de sécurité, revalidé empiriquement par
+# la même détection de chevauchement par bounding box que les jalons
+# 35/36/40 (voir tests/test_chart_image.py).
+_ANGULAR_COLLISION_DEGREES = 13.0
 
 
 def _angular_distance_degrees(a: float, b: float) -> float:
@@ -120,7 +126,9 @@ def _angular_distance_degrees(a: float, b: float) -> float:
     return min(diff, 360.0 - diff)
 
 
-def _assign_point_tiers(entries: list[tuple[str, float]]) -> dict[str, int]:
+def _assign_point_tiers(
+    entries: list[tuple[str, float]], reserved_at_base_tier: list[float] = ()
+) -> dict[str, int]:
     """Attribue un palier entier (0 = rayon de base, 1 = un cran plus interne,
     etc.) à chaque point d'affichage, un par un dans l'ordre des angles, en
     ne considérant que la proximité angulaire réelle
@@ -140,10 +148,21 @@ def _assign_point_tiers(entries: list[tuple[str, float]]) -> dict[str, int]:
     croissants, donc pas nécessairement optimal (un point peut recevoir un
     palier plus profond que strictement nécessaire) mais toujours sûr, dans
     le même esprit que l'étagement systématique déjà en place depuis le
-    jalon 36."""
+    jalon 36.
+
+    `reserved_at_base_tier` : thêtas (degrés) considérés comme occupant déjà
+    le palier 0 avant même de traiter `entries` — utilisé pour les quatre
+    angles AC/DC/MC/IC (jalon 42), dont l'étiquette est toujours au même
+    rayon fixe, proche de celui du palier 0. Sans cette réservation, un
+    point dont la longitude réelle tombe à quelques degrés d'un angle
+    recevait quand même le palier 0 (les angles ne participaient à aucune
+    détection de collision), et son étiquette chevauchait alors celle de
+    l'angle — retour utilisateur direct sur un thème réel, seul le rayon
+    fixe de l'angle étant assez proche du palier 0 pour poser problème (les
+    paliers plus profonds sont déjà nettement plus bas)."""
     ordered = sorted(entries, key=lambda entry: entry[1] % 360.0)
     tiers: dict[str, int] = {}
-    placed: list[tuple[float, int]] = []
+    placed: list[tuple[float, int]] = [(theta, 0) for theta in reserved_at_base_tier]
     for name, theta in ordered:
         used_nearby = {
             tier
@@ -287,15 +306,32 @@ def _build_chart_wheel_figure(observation: Observation):
         theta = _wheel_theta(i * 30, ascendant_longitude)
         ax.plot([theta, theta], [_SIGN_RING_INNER, 1.0], color="black", linewidth=0.6)
 
+    # Les quatre angles (Ascendant/Descendant/Milieu du Ciel/Fond du Ciel) :
+    # calculés ici, avant les points, pour que leurs thêtas puissent réserver
+    # le palier 0 (jalon 42) avant l'étagement des points — mais dessinés
+    # plus bas, dans leur emplacement d'origine (l'ordre d'ajout ne change
+    # pas l'empilement visuel, contrôlé par `zorder`).
+    midheaven_longitude = longitude_of(observation.midheaven.sign, observation.midheaven.degree_in_sign)
+    angles = [
+        (ascendant_longitude, "AC"),
+        ((ascendant_longitude + 180) % 360, "DC"),
+        (midheaven_longitude, "MC"),
+        ((midheaven_longitude + 180) % 360, "IC"),
+    ]
+    angle_theta_degrees = [_wheel_theta_degrees(longitude, ascendant_longitude) for longitude, _ in angles]
+
     # Points : rayon attribué par proximité angulaire réelle sur l'ensemble
     # de la roue (`_assign_point_tiers`, jalon 40), pas par appartenance à un
     # même amas de signe (jalon 36) — deux amas de signes voisins peuvent
     # être à quelques degrés réels l'un de l'autre et se disputer le même
-    # rayon tout autant que deux membres d'un même amas. Chaque marqueur et
-    # son étiquette partagent un `gid` (`point:<nom>`) : uniquement pour que
-    # les tests de non-chevauchement (jalon 36) puissent distinguer un
-    # marqueur et sa propre étiquette (attendus proches l'un de l'autre)
-    # d'un chevauchement avec un point différent (un vrai défaut visuel).
+    # rayon tout autant que deux membres d'un même amas. Les quatre angles
+    # réservent aussi le palier 0 (jalon 42) : leur étiquette est à un rayon
+    # fixe assez proche de celui du palier 0 pour s'y chevaucher sinon.
+    # Chaque marqueur et son étiquette partagent un `gid` (`point:<nom>`) :
+    # uniquement pour que les tests de non-chevauchement (jalon 36) puissent
+    # distinguer un marqueur et sa propre étiquette (attendus proches l'un
+    # de l'autre) d'un chevauchement avec un point différent (un vrai défaut
+    # visuel).
     points_by_name = {p.name: p for p in observation.all_points}
     excluded_from_dots = {"Ascendant", "Milieu du Ciel"}
     display_names = [
@@ -307,7 +343,7 @@ def _build_chart_wheel_figure(observation: Observation):
         )
         for name in display_names
     }
-    tiers = _assign_point_tiers(list(theta_degrees_by_name.items()))
+    tiers = _assign_point_tiers(list(theta_degrees_by_name.items()), reserved_at_base_tier=angle_theta_degrees)
     tier_count = max(tiers.values(), default=-1) + 1
     radii_by_tier, crowded = _tier_radii(tier_count)
     label_offset = _POINT_LABEL_OFFSET_CROWDED if crowded else _POINT_LABEL_OFFSET
@@ -349,14 +385,8 @@ def _build_chart_wheel_figure(observation: Observation):
     # Ciel sont chacun deux points diamétralement opposés (+180° de
     # longitude écliptique) — géométrie pure, pas un nouveau calcul
     # astrologique indépendant. Ligne radiale distincte plutôt qu'un
-    # glyphe de planète (convention usuelle des roues de thème).
-    midheaven_longitude = longitude_of(observation.midheaven.sign, observation.midheaven.degree_in_sign)
-    angles = [
-        (ascendant_longitude, "AC"),
-        ((ascendant_longitude + 180) % 360, "DC"),
-        (midheaven_longitude, "MC"),
-        ((midheaven_longitude + 180) % 360, "IC"),
-    ]
+    # glyphe de planète (convention usuelle des roues de thème). `angles`
+    # déjà calculé plus haut (réservation du palier 0, jalon 42).
     for longitude, label in angles:
         theta = _wheel_theta(longitude, ascendant_longitude)
         ax.plot([theta, theta], [0, _SIGN_RING_INNER], color=WHEEL_ANGLE_COLOR, linewidth=1.4, zorder=3)

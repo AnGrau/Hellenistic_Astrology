@@ -29,15 +29,32 @@ def test_render_chart_wheel_on_reference_charts(fixture_name):
     assert len(png) > 0
 
 
+def _text_window_extent(text, renderer):
+    """Bounding box réellement rendue d'un `Text` : celle de la boîte
+    arrondie (`bbox=...`) si l'étiquette en a une, pas seulement celle des
+    glyphes. `Text.get_window_extent` ne mesure QUE le texte lui-même —
+    jamais le `FancyBboxPatch` ajouté par `bbox=` (jalon 37, glyphes de
+    point et étiquettes d'angle) — donc deux étiquettes voisines pouvaient
+    se chevaucher visuellement (le padding de la boîte les fait déborder)
+    sans que ce test, avant cette correction, ne le détecte jamais (angle
+    mort découvert par retour utilisateur direct après le jalon 40, qui
+    n'avait donc été calibré que contre une mesure trop optimiste)."""
+    patch = text.get_bbox_patch()
+    if patch is not None:
+        return patch.get_window_extent(renderer=renderer)
+    return text.get_window_extent(renderer=renderer)
+
+
 def _wheel_label_and_marker_boxes(fig):
-    """Bounding box (pixels) de chaque étiquette de texte et de chaque
+    """Bounding box (pixels) de chaque étiquette de texte (boîte arrondie
+    incluse quand elle existe, voir `_text_window_extent`) et de chaque
     marqueur de point (`ax.plot(..., "o", gid="point:<nom>")`), avec le
     `gid` associé quand il existe — un marqueur et sa propre étiquette
     partagent le même `gid` (voir `render_chart_wheel`) et sont donc
     attendus proches l'un de l'autre, pas un vrai chevauchement."""
     ax = fig.axes[0]
     renderer = fig.canvas.get_renderer()
-    boxes = [(text.get_gid(), text.get_window_extent(renderer=renderer)) for text in ax.texts]
+    boxes = [(text.get_gid(), _text_window_extent(text, renderer)) for text in ax.texts]
     boxes += [
         (line.get_gid(), line.get_window_extent(renderer=renderer))
         for line in ax.lines
@@ -100,6 +117,79 @@ def test_render_chart_wheel_lone_points_in_adjacent_signs_do_not_overlap():
             SignCluster(sign="Taureau", house=2, members=("Soleil",)),
             SignCluster(sign="Gémeaux", house=3, members=("Lune",)),
         ],
+    )
+
+    fig = chart_image._build_chart_wheel_figure(observation)
+    fig.canvas.draw()
+    overlaps = _wheel_overlaps(fig)
+    plt.close(fig)
+
+    assert overlaps == []
+
+
+def test_render_chart_wheel_points_near_angles_do_not_overlap_angle_labels():
+    # Retour utilisateur direct sur un thème réel (jalon 42) : découvert en
+    # corrigeant la mesure de bounding box du test (`_text_window_extent`,
+    # qui ne comptait pas le padding des boîtes avant cette correction, un
+    # angle mort du jalon 37 jamais détecté jusqu'ici). Un point dont la
+    # longitude réelle tombe à quelques degrés d'un angle (AC/DC/MC/IC)
+    # chevauchait l'étiquette de cet angle : `_assign_point_tiers` et la
+    # boucle de dessin des angles ne se connaissaient pas l'un l'autre. Un
+    # point à 2° de chacun des quatre angles, pas seulement de celui (IC,
+    # chez Anthony) découvert par hasard.
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    soleil = PointPosition(name="Soleil", sign="Bélier", degree_in_sign=2, house=1)  # près de AC
+    lune = PointPosition(name="Lune", sign="Balance", degree_in_sign=2, house=7)  # près de DC
+    mercure = PointPosition(name="Mercure", sign="Capricorne", degree_in_sign=2, house=10)  # près de MC
+    venus = PointPosition(name="Vénus", sign="Cancer", degree_in_sign=2, house=4)  # près de IC
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=midheaven,
+        planets=[soleil, lune, mercure, venus],
+        all_points=[ascendant, midheaven, soleil, lune, mercure, venus],
+        clusters=[
+            SignCluster(sign="Bélier", house=1, members=("Soleil",)),
+            SignCluster(sign="Balance", house=7, members=("Lune",)),
+            SignCluster(sign="Capricorne", house=10, members=("Mercure",)),
+            SignCluster(sign="Cancer", house=4, members=("Vénus",)),
+        ],
+    )
+
+    fig = chart_image._build_chart_wheel_figure(observation)
+    fig.canvas.draw()
+    overlaps = _wheel_overlaps(fig)
+    plt.close(fig)
+
+    assert overlaps == []
+
+
+@pytest.mark.parametrize("member_count", range(4, 9))
+def test_render_chart_wheel_tightly_packed_cluster_does_not_overlap(member_count):
+    # Jalon 42 : la correction de mesure (`_text_window_extent`) a révélé
+    # que 6 points mutuellement proches (tous à moins de 4° de leur voisin,
+    # dans un même signe) se chevauchaient sous l'ancien seuil angulaire
+    # (9°, calibré sur une mesure de texte seul, jalon 40) malgré
+    # l'étagement radial en mode "resserré" (jalon 36). Recalibré à 13°
+    # (mesure directe de la largeur réellement rendue de "Fort.", boîte
+    # comprise) : revalidé ici jusqu'à 8 membres (les 7 planètes classiques
+    # + un nœud), au-delà de ce qu'aucun des deux thèmes de référence ne
+    # présente (4 membres, le maximum observé, chez Anthony).
+    ascendant = PointPosition(name="Ascendant", sign="Bélier", degree_in_sign=0, house=1)
+    midheaven = PointPosition(name="Milieu du Ciel", sign="Capricorne", degree_in_sign=0, house=10)
+    names = ["Soleil", "Lune", "Mercure", "Vénus", "Mars", "Jupiter", "Saturne", "Nœud Nord"][:member_count]
+    degrees = [1, 5, 9, 13, 17, 21, 25, 29][:member_count]
+    planets = [PointPosition(name=n, sign="Scorpion", degree_in_sign=d, house=8) for n, d in zip(names, degrees)]
+    observation = Observation(
+        name="Test",
+        sect="diurne",
+        ascendant=ascendant,
+        midheaven=midheaven,
+        planets=planets,
+        all_points=[ascendant, midheaven, *planets],
+        clusters=[SignCluster(sign="Scorpion", house=8, members=tuple(names))],
     )
 
     fig = chart_image._build_chart_wheel_figure(observation)
