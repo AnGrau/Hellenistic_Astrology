@@ -401,6 +401,8 @@
   .tag.robustness { background: var(--bad-soft); color: var(--bad); }
   .tag.test-coverage { background: var(--good-soft); color: var(--good); }
   .tag.docs { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+  .tag.resolved { background: var(--good-soft); color: var(--good); }
+  .finding.is-resolved { opacity: 0.82; }
   .finding-loc {
     font-family: var(--font-mono);
     font-size: 0.78rem;
@@ -444,16 +446,16 @@
 <div class="wrap">
 
   <header class="masthead">
-    <p class="eyebrow">Codebase reference · jalon 38</p>
+    <p class="eyebrow">Codebase reference · jalon 41</p>
     <h1 class="title">Hellenistic Astrology</h1>
     <p class="dek">A file-by-file map of the <code>hellenistic-astrology</code> repository — the whole-sign natal chart pipeline, from Swiss Ephemeris positions to an assembled <code>.docx</code> — followed by a line-level code review of the parts that carry the most risk.</p>
     <div class="statline">
       <div class="stat"><span class="n">25</span><span class="l">Python modules</span></div>
-      <div class="stat"><span class="n">3,383</span><span class="l">Lines of source</span></div>
-      <div class="stat"><span class="n">214</span><span class="l">Tests passing</span></div>
+      <div class="stat"><span class="n">3,467</span><span class="l">Lines of source</span></div>
+      <div class="stat"><span class="n">223</span><span class="l">Tests passing</span></div>
       <div class="stat"><span class="n">2</span><span class="l">Reference natal charts</span></div>
-      <div class="stat"><span class="n">38</span><span class="l">Documented milestones</span></div>
-      <div class="stat"><span class="n">52</span><span class="l">Commits</span></div>
+      <div class="stat"><span class="n">41</span><span class="l">Documented milestones</span></div>
+      <div class="stat"><span class="n">59</span><span class="l">Commits</span></div>
     </div>
   </header>
 
@@ -514,15 +516,15 @@
 
   <section id="files">
     <h2>File reference</h2>
-    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>438bc0c</code>.</p>
+    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>de8fbdc</code>.</p>
 
     <h3 class="sub">core/ — calculation engine</h3>
     <div class="table-scroll">
     <table class="files">
       <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
       <tbody>
-        <tr><td class="file">chart.py</td><td class="loc">167</td><td class="desc">Entry point — <code>build_observation()</code> orchestrates every other core module into one <code>Observation</code>.</td></tr>
-        <tr><td class="file">ephemeris.py</td><td class="loc">80</td><td class="desc">Swiss Ephemeris (<code>pyswisseph</code>) wrapper — planet positions, Ascendant/MC, true North Node. Falls back to Moshier/Moseph theory when no <code>.se1</code> files are installed.</td></tr>
+        <tr><td class="file">chart.py</td><td class="loc">170</td><td class="desc">Entry point — <code>build_observation()</code> orchestrates every other core module into one <code>Observation</code>. Sign/degree computed once per planet and reused across the four dignity lookups (jalon 39).</td></tr>
+        <tr><td class="file">ephemeris.py</td><td class="loc">80</td><td class="desc">Swiss Ephemeris (<code>pyswisseph</code>) wrapper — planet positions, Ascendant/MC, true North Node. Falls back to Moshier/Moseph theory when no <code>.se1</code> files are installed; both branches directly unit-tested (jalon 39).</td></tr>
         <tr><td class="file">houses.py</td><td class="loc">69</td><td class="desc">The 12 signs, whole-sign house numbering, modality table — the one house system this project uses, non-negotiable.</td></tr>
         <tr><td class="file">sect.py</td><td class="loc">82</td><td class="desc">Diurnal/nocturnal determination and per-planet sect role, including Mercury's heliacal-phase-dependent affinity (jalon 38).</td></tr>
         <tr><td class="file">dignities.py</td><td class="loc">245</td><td class="desc">Domicile/exaltation/exile/fall, traditional rulerships, triplicity, Egyptian bounds, Chaldean decans, mutual reception, solar proximity.</td></tr>
@@ -544,7 +546,7 @@
       <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
       <tbody>
         <tr><td class="file">builder.py</td><td class="loc">837</td><td class="desc">Every <code>add_*_section</code>/<code>add_*_table</code> and <code>build_observation_document()</code> — Phase 1 (Observation) and Phase 2 (technical sheet) in full.</td></tr>
-        <tr><td class="file">chart_image.py</td><td class="loc">365</td><td class="desc">Matplotlib rendering — chart wheel (dark theme, jalon 37), element/modality bars, zodiacal releasing timeline. Hand-drawn against <code>core</code>'s own data rather than a second ephemeris engine.</td></tr>
+        <tr><td class="file">chart_image.py</td><td class="loc">442</td><td class="desc">Matplotlib rendering — chart wheel (dark theme, jalon 37; retrograde marks and leader lines), element/modality bars, zodiacal releasing timeline. Point radius is assigned by real angular proximity across the whole wheel (jalon 40), not by sign-cluster membership — two lone points in adjacent signs can be as angularly close as two members of the same cluster. Hand-drawn against <code>core</code>'s own data rather than a second ephemeris engine.</td></tr>
         <tr><td class="file">styles.py</td><td class="loc">90</td><td class="desc">Table shading/widths, plus the hand-built oxml table-of-contents field python-docx has no native support for.</td></tr>
       </tbody>
     </table>
@@ -556,7 +558,7 @@
       <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
       <tbody>
         <tr><td class="file">interpretation/brief.py</td><td class="loc">194</td><td class="desc">Assembles the factual Phase 3 brief by replaying <code>docgen</code>'s own section functions against a throwaway <code>Document()</code> — zero duplicated facts.</td></tr>
-        <tr><td class="file">cli.py</td><td class="loc">75</td><td class="desc"><code>hellenistic-astrology &lt;file.json&gt;</code> entry point.</td></tr>
+        <tr><td class="file">cli.py</td><td class="loc">79</td><td class="desc"><code>hellenistic-astrology &lt;file.json&gt;</code> entry point. Write failures now report the same <code>erreur : ...</code> style as calculation failures (jalon 39).</td></tr>
         <tr><td class="file">mcp_server.py</td><td class="loc">124</td><td class="desc">Local stdio MCP server exposing the four tools above as thin wrappers over plain, independently-testable functions.</td></tr>
         <tr><td class="file">assembly.py</td><td class="loc">118</td><td class="desc">Narrow hand-rolled Markdown parser (headings, bullets, <code>*italic*</code>) that appends reviewed Phase 3 prose to an existing <code>.docx</code>.</td></tr>
         <tr><td class="file">bibliography.py</td><td class="loc">71</td><td class="desc">HEAD/GET-checks the four bibliography URLs quoted in CLAUDE.md against link rot.</td></tr>
@@ -600,8 +602,8 @@
     <h2>Test coverage</h2>
     <p class="section-note">The project's own ground truth: two real natal charts, manually validated and never pushed to GitHub, checked against every calculation module.</p>
     <div class="metric-grid">
-      <div class="metric"><div class="n">214</div><div class="l">tests passing</div></div>
-      <div class="metric"><div class="n">20</div><div class="l">test files</div></div>
+      <div class="metric"><div class="n">223</div><div class="l">tests passing</div></div>
+      <div class="metric"><div class="n">21</div><div class="l">test files</div></div>
       <div class="metric"><div class="n">0.05°</div><div class="l">regression tolerance</div></div>
       <div class="metric"><div class="n">2</div><div class="l">reference charts (gitignored)</div></div>
       <div class="metric"><div class="n">4</div><div class="l">MCP tools tested headless</div></div>
@@ -611,53 +613,55 @@
 
   <section id="review">
     <h2>Code review</h2>
-    <p class="section-note">Read line-by-line: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. Findings below are what survived; most things that looked odd on first read turned out to be documented, deliberate, and already validated against the two reference charts.</p>
+    <p class="section-note">Read line-by-line at jalon 38: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. The four findings below were all fixed the same day (jalon 39); nothing is currently open. <code>chart_image.py</code>'s subsequent rewrite (jalon 40, replacing per-cluster radius staggering with a global angular-proximity pass) isn't re-reviewed here from scratch — it shipped with its own dedicated tests (bounding-box overlap detection on the exact failure pattern it fixes), the same validation method this review already relies on elsewhere.</p>
 
     <div class="verdict-box">
-      <strong>No correctness bugs found.</strong> The four items below are minor — duplicate computation, an untested branch, one uncaught exception class, and stale scaffold metadata. Nothing here affects the accuracy of a generated chart.
+      <strong>No correctness bugs found, and all four minor findings below are now resolved.</strong> Duplicate computation, an untested branch, one uncaught exception class, and stale scaffold metadata — none ever affected the accuracy of a generated chart.
     </div>
 
-    <div class="finding">
+    <div class="finding is-resolved">
       <div class="finding-head">
         <span class="finding-title">Sign/degree recomputed up to four times per planet</span>
         <span class="tag simplification">simplification</span>
+        <span class="tag resolved">resolved · jalon 39</span>
       </div>
-      <span class="finding-loc">core/chart.py — build_observation(), lines 76–95</span>
-      <p>For each of the 7 classical planets, <code>houses.sign_name(raw.longitude)</code> is called separately for <code>essential_dignity</code>, <code>triplicity_dignity</code>, and twice more inside <code>bound_dignity</code>/<code>decan_dignity</code> alongside <code>houses.degree_in_sign(raw.longitude)</code> — then <code>make_point()</code> recomputes both again internally to build the <code>PointPosition</code>. All pure arithmetic (a modulo and a division), so there's no measurable cost, but hoisting <code>sign = houses.sign_name(raw.longitude)</code> once per planet and passing it through would remove the duplication cleanly.</p>
+      <span class="finding-loc">core/chart.py — build_observation()</span>
+      <p>For each of the 7 classical planets, <code>houses.sign_name(raw.longitude)</code> was called separately for <code>essential_dignity</code>, <code>triplicity_dignity</code>, and twice more inside <code>bound_dignity</code>/<code>decan_dignity</code> alongside <code>houses.degree_in_sign(raw.longitude)</code>. All pure arithmetic, so no measurable cost, but genuinely duplicated. <strong>Fix:</strong> <code>sign</code>/<code>degree</code> are now computed once per planet in the loop and passed through to all four dignity calls.</p>
     </div>
 
-    <div class="finding">
+    <div class="finding is-resolved">
       <div class="finding-head">
-        <span class="finding-title">The Swiss Ephemeris file-backed path is never exercised by the test suite</span>
+        <span class="finding-title">The Swiss Ephemeris file-backed path was never exercised by the test suite</span>
         <span class="tag test-coverage">test-coverage</span>
+        <span class="tag resolved">resolved · jalon 39</span>
       </div>
       <span class="finding-loc">core/ephemeris.py — compute_flags()</span>
-      <p><code>data/ephe/</code> is present but empty in this environment (gitignored, populated only by <code>scripts/fetch_ephemeris.py</code>), so <code>compute_flags()</code> always takes the Moshier/Moseph fallback branch (<code>swe.FLG_MOSEPH</code>) — the higher-precision <code>swe.FLG_SWIEPH</code> branch has no test coverage at all, here or presumably in CI. The two are documented as agreeing to ~1 arcsecond, so this is unlikely to hide a real bug, but it means the code path most users would actually run in production (with real ephemeris files installed) is the one path never executed by <code>pytest</code>.</p>
+      <p><code>data/ephe/</code> is present but empty in this environment, so <code>compute_flags()</code> only ever took the Moshier/Moseph fallback branch — the higher-precision <code>swe.FLG_SWIEPH</code> branch had no test coverage at all. <strong>Fix:</strong> <code>tests/test_ephemeris.py</code> (new) exercises both branches directly with real temp directories (missing, empty, containing a fake <code>.se1</code>, containing an unrelated file) — no real ephemeris data needed.</p>
     </div>
 
-    <div class="finding">
+    <div class="finding is-resolved">
       <div class="finding-head">
-        <span class="finding-title">CLI doesn't catch a save failure the same way it catches a calculation failure</span>
+        <span class="finding-title">CLI didn't catch a save failure the same way it caught a calculation failure</span>
         <span class="tag robustness">robustness</span>
+        <span class="tag resolved">resolved · jalon 39</span>
       </div>
-      <span class="finding-loc">cli.py — main(), lines 60–69</span>
-      <p><code>build_observation()</code> is wrapped in <code>except (GeocodingError, ValueError)</code> and prints a clean <code>erreur : ...</code> line, but <code>document.save(output_path)</code> just below it is not — a permissions problem, a full disk, or a bad <code>-o</code> path would surface as a raw traceback instead of the friendly message the rest of the CLI uses. Same shape of gap doesn't exist in <code>mcp_server.py</code>, which wraps each tool call uniformly via <code>_with_error_handling</code>.</p>
+      <span class="finding-loc">cli.py — main()</span>
+      <p><code>build_observation()</code> was wrapped in <code>except (GeocodingError, ValueError)</code>, but <code>document.save(output_path)</code> just below it was not — a permissions problem or a bad <code>-o</code> path surfaced as a raw traceback. <strong>Fix:</strong> the <code>mkdir</code>/<code>save</code> pair is now inside its own <code>try/except OSError</code>, reporting the same <code>erreur : ...</code> style; covered by a new test that points <code>-o</code> at a path blocked by an existing file.</p>
     </div>
 
-    <div class="finding">
+    <div class="finding is-resolved">
       <div class="finding-head">
         <span class="finding-title">Scaffold metadata never updated</span>
         <span class="tag docs">docs</span>
+        <span class="tag resolved">partially resolved · jalon 39</span>
       </div>
       <span class="finding-loc">pyproject.toml</span>
-      <pre><code>description = "Add your description here"
-version = "0.1.0"</code></pre>
-      <p>Both are still the <code>uv init</code> default, 38 milestones in. Harmless today since nothing is published to an index, but worth a one-line fix before this repository is pointed at from anywhere public-facing (a GitHub "About" blurb, a release tag).</p>
+      <p><code>description</code> and <code>version</code> were still the <code>uv init</code> defaults, 38 milestones in. <strong>Fix:</strong> <code>description</code> now matches the project's real one-line summary. <code>version</code> was deliberately left at <code>0.1.0</code> — there's no established release/versioning policy for this project yet, so bumping it would mean inventing one unilaterally rather than fixing stale scaffolding.</p>
     </div>
   </section>
 
   <footer id="methodology">
-    <p><strong>Methodology.</strong> Generated by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s 38-milestone history to distinguish an actual defect from a documented, already-negotiated design decision. <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 214 passed, 0 failed, at commit <code>438bc0c</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>.</p>
+    <p><strong>Methodology.</strong> Original review generated at jalon 38 by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s milestone history to distinguish an actual defect from a documented, already-negotiated design decision; refreshed at jalon 41 (file reference and stats resynced, all four findings marked resolved). <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 223 passed, 0 failed, at commit <code>de8fbdc</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>; a third real client validated the pipeline end to end since (jalon 41) but is deliberately not named here.</p>
   </footer>
 
 </div>

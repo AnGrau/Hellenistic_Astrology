@@ -7,7 +7,7 @@ final. Voir `README.md` pour la référence détaillée de chaque commande, et
 Trois façons d'utiliser ce projet, du plus simple au plus intégré :
 
 - **A. En ligne de commande**, seul, sans assistant IA.
-- **B. Depuis Claude Code ou Mistral Vibe**, en travaillant directement dans ce dépôt (le serveur MCP et le skill sont disponibles automatiquement).
+- **B. Depuis Claude Code, Claude Desktop ou Mistral Vibe**, avec le serveur MCP et le skill disponibles — automatiquement en travaillant dans ce dépôt pour Claude Code/Vibe, après une configuration manuelle unique pour Claude Desktop (voir `README.md`, sections « Serveur MCP local » et « Skills dans Claude Desktop »).
 - **C. Depuis Claude Chat ou Mistral Le Chat**, sans logiciel local (voir les limites en fin de guide).
 
 Dans les trois cas, le skill `.claude/skills/hellenistic-astrology/` peut guider les étapes 1 à 5 ci-dessous de bout en bout — il appelle les outils MCP quand ils sont disponibles (voies A/B) ou indique la commande exacte à lancer soi-même sinon (voie C), sans jamais sauter la relecture humaine de la Phase 3 (étape 4). Les sous-sections suivantes détaillent chaque étape pour qui préfère la main sur chaque commande.
@@ -42,7 +42,7 @@ Créer un fichier JSON, par exemple `naissance.json` :
 ```
 
 - Naissance avant 1916 : remplacer `local_date`/`local_time`/`tz_name` par `utc_datetime` (ex. `"1900-01-01T11:00:00+00:00"`).
-- Coordonnées inconnues : remplacer `latitude`/`longitude` par `"place": "Paris 14e, France"` (envoie ce texte à un service de géocodage tiers, Nominatim/OpenStreetMap — à n'utiliser qu'en connaissance de cause). Ajouter `"country_code": "fr"` si le lieu est ambigu.
+- Coordonnées inconnues : remplacer `latitude`/`longitude` par `"place": "Paris 14e, France"` (envoie ce texte à un service de géocodage tiers, Nominatim/OpenStreetMap — à n'utiliser qu'en connaissance de cause). Ajouter `"country_code": "fr"` si le lieu est ambigu ; parfois insuffisant (deux entrées déjà dans le même pays), auquel cas préciser directement `place` avec le code postal (ex. `"Villeneuve-sur-Lot, 47300, France"`) — voir `README.md`.
 
 ## 3A. Voie ligne de commande
 
@@ -76,18 +76,25 @@ print(build_interpretation_brief(observation, birth))
 
 (Pour les deux thèmes de test du projet uniquement, `scripts/generate_docx.py` et `scripts/generate_brief.py` font la même chose en une commande — voir `README.md`.)
 
-## 3B. Voie Claude Code / Mistral Vibe
+## 3B. Voie Claude Code / Claude Desktop / Mistral Vibe
 
-En travaillant dans ce dépôt, le serveur MCP (`.mcp.json`, déjà committé)
-expose trois outils équivalents à l'étape 3A, sans quitter la
-conversation :
+Le serveur MCP local expose quatre outils équivalents aux étapes 3A et 5,
+sans quitter la conversation :
 
 - `compute_observation` — renvoie les faits en JSON structuré (pour poser des questions ponctuelles sur le thème sans générer de document).
 - `generate_document` — génère le `.docx` complet.
 - `generate_interpretation_brief` — génère le brief de Phase 3 directement (équivalent à la commande de l'étape 3A, sans avoir à l'écrire).
+- `assemble_final_document` — équivalent à l'étape 5.
 
 Demander simplement, par exemple : *« Génère le brief de Phase 3 pour ces
 données de naissance : {...} »* — l'agent appelle l'outil MCP approprié.
+
+**Claude Code et Mistral Vibe** découvrent `.mcp.json` (déjà committé)
+automatiquement en travaillant dans ce dépôt cloné. **Claude Desktop**
+nécessite une configuration manuelle une fois — serveur MCP ajouté à sa
+config globale, skills importés en `.zip` — voir `README.md`, sections
+« Serveur MCP local » et « Skills dans Claude Desktop », pour le détail
+complet.
 
 ## 3C. Voie Claude Chat / Mistral Le Chat (sans logiciel local)
 
@@ -103,7 +110,7 @@ secte, libération zodiacale...) et les règles de style à respecter, mais
 pas la prose elle-même : c'est une rédaction assistée, volontairement
 supervisée, pas un rendu automatique.
 
-- **Claude Code** : le skill `.claude/skills/hellenistic-astrology-phase3/` se déclenche automatiquement en fournissant le brief (généré à l'étape 3A ou 3B) — demander directement *« rédige la Phase 3 à partir de ce brief »*.
+- **Claude Code / Claude Desktop** : le skill `.claude/skills/hellenistic-astrology-phase3/` se déclenche automatiquement en fournissant le brief (généré à l'étape 3A ou 3B) — demander directement *« rédige la Phase 3 à partir de ce brief »*. Sur Claude Desktop, ce skill doit avoir été importé au préalable (voir étape 3B).
 - **Claude Chat / Mistral Le Chat / Vibe** : coller le contenu du brief dans la conversation avec une demande similaire ; le skill fonctionne à l'identique une fois copié dans le dossier de skills de l'outil utilisé (voir `README.md`, section Skill).
 
 Le résultat est un brouillon à relire : chaque affirmation technique doit
