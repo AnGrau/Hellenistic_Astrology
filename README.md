@@ -42,7 +42,7 @@ Pour une naissance antérieure à 1916 (résolution automatique du fuseau non fi
 
 Si tu ne connais pas les coordonnées exactes, remplacer `latitude`/`longitude` par `"place": "Paris 14e, France"` : le lieu est alors résolu via géocodage (Nominatim/OpenStreetMap). **Ceci envoie le texte du lieu sur le réseau à un service tiers** — n'utiliser cette option qu'en connaissance de cause ; fournir directement `latitude`/`longitude` reste le seul mode qui n'envoie aucune donnée nulle part.
 
-Si `place` est ambigu (ex. `"Paris"` sans indication de pays), la génération échoue avec la liste des lieux candidats trouvés. Ajouter `"country_code": "fr"` (code pays ISO 3166-1 alpha-2) pour lever l'ambiguïté, ou préciser directement `place` (ex. `"Paris, France"`).
+Si `place` est ambigu (ex. `"Paris"` sans indication de pays), la génération échoue avec la liste des lieux candidats trouvés. Ajouter `"country_code": "fr"` (code pays ISO 3166-1 alpha-2) pour lever l'ambiguïté, ou préciser directement `place` (ex. `"Paris, France"`). `country_code` ne suffit pas toujours : si Nominatim renvoie plusieurs entrées déjà dans le même pays (rencontré en pratique avec `"Villeneuve-sur-Lot, France"`, qui renvoie deux entrées OSM distinctes — avec et sans code postal), ajouter le code postal directement dans `place` (ex. `"Villeneuve-sur-Lot, 47300, France"`).
 
 Puis générer le document :
 
