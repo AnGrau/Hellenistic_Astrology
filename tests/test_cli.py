@@ -29,6 +29,26 @@ def test_cli_generates_docx_from_json_birth_data(tmp_path):
     assert headings == ["Table des matières", "Phase 1 — Observation", "Phase 2 — Fiche technique"]
 
 
+def test_cli_reports_friendly_error_when_output_cannot_be_written(tmp_path, capsys):
+    fixture = load_fixture("anthony")
+    birth_data_path = tmp_path / "anthony.json"
+    birth_data_path.write_text(json.dumps(fixture["birth_data"]), encoding="utf-8")
+
+    # `blocker` existe déjà en tant que fichier : le créer comme dossier
+    # parent du .docx de sortie échoue de façon déterministe (FileExistsError,
+    # une sous-classe d'OSError), sans dépendre de permissions spécifiques à
+    # un OS.
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    output_path = blocker / "rapport.docx"
+
+    exit_code = main([str(birth_data_path), "-o", str(output_path)])
+
+    assert exit_code == 1
+    assert "erreur" in capsys.readouterr().err
+    assert not output_path.exists()
+
+
 def test_cli_defaults_output_to_output_dir_with_slugified_name(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     fixture = load_fixture("liam")

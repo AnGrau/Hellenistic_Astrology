@@ -1,7 +1,7 @@
 [project]
 name = "hellenistic-astrology"
 version = "0.1.0"
-description = "Add your description here"
+description = "Calcul et mise en forme de thèmes natals en astrologie hellénistique (signes entiers)."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"

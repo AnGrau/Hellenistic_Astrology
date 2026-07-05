@@ -73,26 +73,29 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
 
     ascendant = make_point("Ascendant", ascendant_lon)
     midheaven = make_point("Milieu du Ciel", midheaven_lon)
-    planets = [
-        make_point(
-            name,
-            raw.longitude,
-            retrograde=raw.retrograde,
-            essential_dignity=dignities.essential_dignity(name, houses.sign_name(raw.longitude)),
-            triplicity_dignity=dignities.triplicity_dignity(name, houses.sign_name(raw.longitude)),
-            bound_dignity=dignities.bound_dignity(
-                name, houses.sign_name(raw.longitude), houses.degree_in_sign(raw.longitude)
-            ),
-            decan_dignity=dignities.decan_dignity(
-                name, houses.sign_name(raw.longitude), houses.degree_in_sign(raw.longitude)
-            ),
-            sect_role=sect.sect_role(
-                name, diurnal, mercury_morning_star=mercury_morning_star if name == "Mercure" else None
-            ),
-            speed=raw.speed,
+    planets = []
+    for name, raw in raw_planets.items():
+        # Signe/degré calculés une fois par planète et réutilisés pour les
+        # quatre dignités ci-dessous, plutôt que recalculés à chaque appel
+        # (arithmétique triviale, mais dupliquée jusqu'à 4 fois sans cette
+        # variable locale).
+        sign = houses.sign_name(raw.longitude)
+        degree = houses.degree_in_sign(raw.longitude)
+        planets.append(
+            make_point(
+                name,
+                raw.longitude,
+                retrograde=raw.retrograde,
+                essential_dignity=dignities.essential_dignity(name, sign),
+                triplicity_dignity=dignities.triplicity_dignity(name, sign),
+                bound_dignity=dignities.bound_dignity(name, sign, degree),
+                decan_dignity=dignities.decan_dignity(name, sign, degree),
+                sect_role=sect.sect_role(
+                    name, diurnal, mercury_morning_star=mercury_morning_star if name == "Mercure" else None
+                ),
+                speed=raw.speed,
+            )
         )
-        for name, raw in raw_planets.items()
-    ]
 
     fortune_lon = lots.part_of_fortune(ascendant_lon, sun_lon, moon_lon, diurnal)
     spirit_lon = lots.part_of_spirit(ascendant_lon, sun_lon, moon_lon, diurnal)

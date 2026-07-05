@@ -65,8 +65,12 @@ def main(argv: list[str] | None = None) -> int:
     document = build_observation_document(observation)
 
     output_path = args.output or Path("output") / f"{slugify(birth.name)}.docx"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    document.save(output_path)
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        document.save(output_path)
+    except OSError as exc:
+        print(f"erreur : {exc}", file=sys.stderr)
+        return 1
     print(f"écrit : {output_path}")
     return 0
 
