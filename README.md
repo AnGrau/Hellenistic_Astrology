@@ -90,6 +90,23 @@ Un serveur MCP local (`src/hellenistic_astrology/mcp_server.py`, transport stdio
 
 Ce serveur reste volontairement **local uniquement** : un serveur MCP hébergé publiquement (pour Claude Chat ou Mistral Le Chat directement, sans logiciel local) est hors périmètre pour l'instant, car il déclencherait la clause de licence Swiss Ephemeris Professional déjà notée dans `CLAUDE.md` (section Environnement de travail).
 
+## Skills dans Claude Desktop
+
+Contrairement à Claude Code (découverte automatique de `.claude/skills/` à la racine du dépôt), **Claude Desktop ne lit jamais ce dossier directement** : les deux skills doivent être importés manuellement, une fois par compte, indépendamment du dépôt Git.
+
+1. **Réglages → Capacités** : activer **« Exécution de code »** (prérequis obligatoire avant de pouvoir importer un skill).
+2. **Personnaliser → Skills → « + »  → « Créer un skill » → « Importer un skill »**.
+3. Compresser chaque dossier de skill en `.zip` et l'importer séparément :
+   - `.claude/skills/hellenistic-astrology/` → `hellenistic-astrology.zip`
+   - `.claude/skills/hellenistic-astrology-phase3/` → `hellenistic-astrology-phase3.zip`
+4. Activer les deux dans le même panneau **Personnaliser → Skills**.
+
+**Importer les deux skills, pas seulement celui de bout en bout** : l'étape 3 du skill `hellenistic-astrology` renvoie explicitement aux règles de rédaction du skill `hellenistic-astrology-phase3` (« ne pas dupliquer ces règles ici ») — cette référence ne se résout que si les deux sont importés.
+
+Cet import reste **propre au compte**, séparé du dépôt : toute modification future d'un `SKILL.md` nécessite de recompresser et de réimporter manuellement, rien ne synchronise automatiquement les deux.
+
+Une fois les deux skills importés/activés **et** le serveur MCP local connecté (section ci-dessus), invoquer le skill `hellenistic-astrology` dans une conversation Claude Desktop appelle directement les quatre outils MCP à chaque étape, exactement comme dans Claude Code — la relecture humaine de la Phase 3 restant, dans tous les cas, une étape obligatoire jamais sautée. Si le serveur MCP n'est pas connecté, le skill retombe sur son mode « sans outils » : il indique la commande CLI exacte à lancer soi-même dans un vrai terminal sur le dépôt cloné (l'exécution de code de Claude Desktop est un bac à sable isolé, sans accès à ce dépôt).
+
 ## Assembler le document final
 
 Une fois la Phase 3 rédigée et **finalisée** (relue/éditée dans le chat ou dans son fichier `.md` — pas avant), l'ajouter à la suite du `.docx` de Phase 1/2 déjà généré :
