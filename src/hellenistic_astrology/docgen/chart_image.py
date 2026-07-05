@@ -54,14 +54,33 @@ POINT_LABELS = {
     "Part d'Éros": "Éros",
 }
 
-HARD_ASPECT_COLOR = "#C0392B"  # carré, opposition
-SOFT_ASPECT_COLOR = "#2471A3"  # trigone, sextile
+HARD_ASPECT_COLOR = "#E74C3C"  # carré, opposition — éclairci pour rester lisible sur fond sombre
+SOFT_ASPECT_COLOR = "#5DADE2"  # trigone, sextile — idem
 _ASPECT_COLORS = {
     "Carré": HARD_ASPECT_COLOR,
     "Opposition": HARD_ASPECT_COLOR,
     "Trigone": SOFT_ASPECT_COLOR,
     "Sextile": SOFT_ASPECT_COLOR,
 }
+
+# Palette de la roue seule (jalon 37) : fond quasi noir plutôt que blanc,
+# pour la lisibilité des nombreux petits glyphes/étiquettes qui s'y
+# entassent — limité à `render_chart_wheel` : le graphique élément/modalité
+# et la frise de libération zodiacale restent sur fond clair (décision
+# explicite avec l'utilisateur, pas de repeinte des trois visuels).
+# `ELEMENT_COLORS` reste inchangé (partagé avec ces deux autres visuels) :
+# les teintes pastel gardent un bon contraste sur fond sombre sans qu'il
+# faille les assombrir.
+WHEEL_BACKGROUND_COLOR = "#0d0d1a"
+WHEEL_HOUSE_NUMBER_COLOR = "#a9acc9"
+WHEEL_ASPECT_HUB_COLOR = "#6d7096"
+WHEEL_ANGLE_COLOR = "#d4ac0d"
+WHEEL_POINT_MARKER_COLOR = "#f4f1ea"
+WHEEL_POINT_LABEL_COLOR = "#f4f1ea"
+WHEEL_POINT_BOX_FACECOLOR = "#1c1c2e"
+WHEEL_POINT_BOX_EDGECOLOR = "#565979"
+WHEEL_LEADER_LINE_COLOR = "#565979"
+RETROGRADE_MARK = "℞"
 
 _SIGN_RING_INNER = 0.78
 _HOUSE_NUMBER_RADIUS = 0.745
@@ -153,8 +172,16 @@ def _build_chart_wheel_figure(observation: Observation):
     (`observation.cluster_aspects`, aversions exclues) tracées à l'angle
     médian de chaque signe — fidèle à la méthodologie du projet (aspects
     par signe entre amas, pas des aspects degré-précis entre planètes
-    individuelles). Le repère est ancré sur l'Ascendant (`_wheel_theta`),
-    pas sur le zodiaque fixe : Ascendant/Descendant toujours horizontaux,
+    individuelles). Planètes rétrogrades marquées du symbole ℞ à côté de
+    leur glyphe (jalon 37) ; chaque point est en outre relié à l'anneau des
+    signes par un fil de rappel discret, purement décoratif (le rayon
+    étagé du jalon 36 ne change jamais l'angle). Fond sombre (jalon 37,
+    voir `WHEEL_BACKGROUND_COLOR`), limité à cette roue : le graphique
+    élément/modalité et la frise de libération zodiacale restent sur fond
+    clair, décision explicite avec l'utilisateur.
+
+    Le repère est ancré sur l'Ascendant (`_wheel_theta`), pas sur le
+    zodiaque fixe : Ascendant/Descendant toujours horizontaux,
     Milieu du Ciel/Fond du Ciel à leur position réelle (qui dépend de la
     latitude, comme en whole-sign — pas nécessairement en haut/en bas).
 
@@ -163,7 +190,9 @@ def _build_chart_wheel_figure(observation: Observation):
     (`tests/test_chart_image.py`, détection de chevauchement) sans dupliquer
     la logique de dessin."""
     fig = plt.figure(figsize=(7, 7))
+    fig.patch.set_facecolor(WHEEL_BACKGROUND_COLOR)
     ax = fig.add_subplot(111, projection="polar")
+    ax.set_facecolor(WHEEL_BACKGROUND_COLOR)
     ax.set_theta_zero_location("E")
     ax.set_theta_direction(1)
     ax.set_ylim(0, 1)
@@ -184,13 +213,18 @@ def _build_chart_wheel_figure(observation: Observation):
         )
         ax.text(theta_center, (1.0 + _SIGN_RING_INNER) / 2, SIGN_GLYPHS[sign], ha="center", va="center", fontsize=14)
         house_num = whole_sign_house(i * 30, ascendant_longitude)
-        ax.text(theta_center, _HOUSE_NUMBER_RADIUS, str(house_num), ha="center", va="center", fontsize=9, color="#555555")
+        ax.text(theta_center, _HOUSE_NUMBER_RADIUS, str(house_num), ha="center", va="center", fontsize=9, color=WHEEL_HOUSE_NUMBER_COLOR)
 
-    # Cercles de repère.
+    # Cercles de repère. Les deux limites de la couronne des signes (r=1.0
+    # et r=_SIGN_RING_INNER) restent noires : elles bordent la couronne
+    # pastel des deux côtés possibles (fond sombre à l'intérieur, coins du
+    # subplot à l'extérieur) et le noir contraste correctement contre le
+    # pastel dans les deux cas — seul l'anneau d'aspect, posé sur le disque
+    # sombre, a besoin d'une couleur claire pour rester visible.
     theta_full = np.linspace(0, 2 * np.pi, 200)
     ax.plot(theta_full, [1.0] * 200, color="black", linewidth=1.2)
     ax.plot(theta_full, [_SIGN_RING_INNER] * 200, color="black", linewidth=0.8)
-    ax.plot(theta_full, [_ASPECT_HUB_RADIUS] * 200, color="gray", linewidth=0.5, alpha=0.6)
+    ax.plot(theta_full, [_ASPECT_HUB_RADIUS] * 200, color=WHEEL_ASPECT_HUB_COLOR, linewidth=0.5, alpha=0.6)
     for i in range(12):
         theta = _wheel_theta(i * 30, ascendant_longitude)
         ax.plot([theta, theta], [_SIGN_RING_INNER, 1.0], color="black", linewidth=0.6)
@@ -214,15 +248,32 @@ def _build_chart_wheel_figure(observation: Observation):
             theta = _wheel_theta(longitude_of(point.sign, point.degree_in_sign), ascendant_longitude)
             radius = radii[idx]
             label = POINT_GLYPHS.get(name) or POINT_LABELS.get(name, name[:4])
+            if point.retrograde:
+                label += RETROGRADE_MARK
             is_glyph = name in POINT_GLYPHS
             if crowded:
                 fontsize = _POINT_FONTSIZE_GLYPH_CROWDED if is_glyph else _POINT_FONTSIZE_LOT_CROWDED
             else:
                 fontsize = _POINT_FONTSIZE_GLYPH if is_glyph else _POINT_FONTSIZE_LOT
-            ax.plot(theta, radius, "o", color="#2E3B4E", markersize=4, gid=f"point:{name}")
+            # Fil de rappel entre le marqueur et l'anneau des signes : purement
+            # décoratif (le marqueur est déjà à la longitude réelle du point,
+            # l'étagement du jalon 36 ne modifie que le rayon, jamais l'angle).
+            # Sans `gid` "point:*" volontairement : reste hors du test de
+            # non-chevauchement (jalons 35/36), qui ne porte que sur les
+            # étiquettes et marqueurs eux-mêmes, pas sur ce fil décoratif.
+            ax.plot(
+                [theta, theta], [radius, _SIGN_RING_INNER - 0.02],
+                color=WHEEL_LEADER_LINE_COLOR, linewidth=0.5, alpha=0.5, zorder=1,
+            )
+            ax.plot(theta, radius, "o", color=WHEEL_POINT_MARKER_COLOR, markersize=4, gid=f"point:{name}", zorder=10)
             ax.text(
                 theta, radius + label_offset, label, ha="center", va="center",
-                fontsize=fontsize, color="#2E3B4E", gid=f"point:{name}",
+                fontsize=fontsize, color=WHEEL_POINT_LABEL_COLOR, fontweight="bold",
+                gid=f"point:{name}", zorder=11,
+                bbox=dict(
+                    boxstyle="round,pad=0.15", facecolor=WHEEL_POINT_BOX_FACECOLOR,
+                    edgecolor=WHEEL_POINT_BOX_EDGECOLOR, linewidth=0.8, alpha=0.92,
+                ),
             )
 
     # Les quatre angles : Ascendant/Descendant et Milieu du Ciel/Fond du
@@ -239,8 +290,8 @@ def _build_chart_wheel_figure(observation: Observation):
     ]
     for longitude, label in angles:
         theta = _wheel_theta(longitude, ascendant_longitude)
-        ax.plot([theta, theta], [0, _SIGN_RING_INNER], color="#8B0000", linewidth=1.4)
-        ax.text(theta, _SIGN_RING_INNER - 0.05, label, ha="center", va="center", fontsize=10, fontweight="bold", color="#8B0000")
+        ax.plot([theta, theta], [0, _SIGN_RING_INNER], color=WHEEL_ANGLE_COLOR, linewidth=1.4)
+        ax.text(theta, _SIGN_RING_INNER - 0.05, label, ha="center", va="center", fontsize=10, fontweight="bold", color=WHEEL_ANGLE_COLOR)
 
     # Lignes d'aspect entre amas, à l'angle médian de chaque signe (pas la
     # longitude réelle des points : ce projet calcule des aspects par
