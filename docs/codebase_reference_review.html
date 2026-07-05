@@ -446,16 +446,16 @@
 <div class="wrap">
 
   <header class="masthead">
-    <p class="eyebrow">Codebase reference · jalon 41</p>
+    <p class="eyebrow">Codebase reference · jalon 43</p>
     <h1 class="title">Hellenistic Astrology</h1>
     <p class="dek">A file-by-file map of the <code>hellenistic-astrology</code> repository — the whole-sign natal chart pipeline, from Swiss Ephemeris positions to an assembled <code>.docx</code> — followed by a line-level code review of the parts that carry the most risk.</p>
     <div class="statline">
       <div class="stat"><span class="n">25</span><span class="l">Python modules</span></div>
-      <div class="stat"><span class="n">3,467</span><span class="l">Lines of source</span></div>
-      <div class="stat"><span class="n">223</span><span class="l">Tests passing</span></div>
+      <div class="stat"><span class="n">3,508</span><span class="l">Lines of source</span></div>
+      <div class="stat"><span class="n">231</span><span class="l">Tests passing</span></div>
       <div class="stat"><span class="n">2</span><span class="l">Reference natal charts</span></div>
-      <div class="stat"><span class="n">41</span><span class="l">Documented milestones</span></div>
-      <div class="stat"><span class="n">59</span><span class="l">Commits</span></div>
+      <div class="stat"><span class="n">43</span><span class="l">Documented milestones</span></div>
+      <div class="stat"><span class="n">63</span><span class="l">Commits</span></div>
     </div>
   </header>
 
@@ -516,7 +516,7 @@
 
   <section id="files">
     <h2>File reference</h2>
-    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>de8fbdc</code>.</p>
+    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>f512875</code>.</p>
 
     <h3 class="sub">core/ — calculation engine</h3>
     <div class="table-scroll">
@@ -546,7 +546,7 @@
       <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
       <tbody>
         <tr><td class="file">builder.py</td><td class="loc">837</td><td class="desc">Every <code>add_*_section</code>/<code>add_*_table</code> and <code>build_observation_document()</code> — Phase 1 (Observation) and Phase 2 (technical sheet) in full.</td></tr>
-        <tr><td class="file">chart_image.py</td><td class="loc">442</td><td class="desc">Matplotlib rendering — chart wheel (dark theme, jalon 37; retrograde marks and leader lines), element/modality bars, zodiacal releasing timeline. Point radius is assigned by real angular proximity across the whole wheel (jalon 40), not by sign-cluster membership — two lone points in adjacent signs can be as angularly close as two members of the same cluster. Hand-drawn against <code>core</code>'s own data rather than a second ephemeris engine.</td></tr>
+        <tr><td class="file">chart_image.py</td><td class="loc">483</td><td class="desc">Matplotlib rendering — chart wheel (dark theme, jalon 37; retrograde marks and leader lines), element/modality bars, zodiacal releasing timeline. Point radius is assigned by real angular proximity across the whole wheel (jalon 40), including the four angle axes AC/DC/MC/IC (jalon 42). Base radius, tier step, and label offset are a coupled system, recalibrated together (jalon 43) after a label's own opaque box was found fully hiding its own marker. Hand-drawn against <code>core</code>'s own data rather than a second ephemeris engine.</td></tr>
         <tr><td class="file">styles.py</td><td class="loc">90</td><td class="desc">Table shading/widths, plus the hand-built oxml table-of-contents field python-docx has no native support for.</td></tr>
       </tbody>
     </table>
@@ -602,7 +602,7 @@
     <h2>Test coverage</h2>
     <p class="section-note">The project's own ground truth: two real natal charts, manually validated and never pushed to GitHub, checked against every calculation module.</p>
     <div class="metric-grid">
-      <div class="metric"><div class="n">223</div><div class="l">tests passing</div></div>
+      <div class="metric"><div class="n">231</div><div class="l">tests passing</div></div>
       <div class="metric"><div class="n">21</div><div class="l">test files</div></div>
       <div class="metric"><div class="n">0.05°</div><div class="l">regression tolerance</div></div>
       <div class="metric"><div class="n">2</div><div class="l">reference charts (gitignored)</div></div>
@@ -613,7 +613,7 @@
 
   <section id="review">
     <h2>Code review</h2>
-    <p class="section-note">Read line-by-line at jalon 38: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. The four findings below were all fixed the same day (jalon 39); nothing is currently open. <code>chart_image.py</code>'s subsequent rewrite (jalon 40, replacing per-cluster radius staggering with a global angular-proximity pass) isn't re-reviewed here from scratch — it shipped with its own dedicated tests (bounding-box overlap detection on the exact failure pattern it fixes), the same validation method this review already relies on elsewhere.</p>
+    <p class="section-note">Read line-by-line at jalon 38: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. The four findings below were all fixed the same day (jalon 39); nothing is currently open. <code>chart_image.py</code>'s three subsequent rewrites (jalon 40: per-cluster staggering replaced by a global angular-proximity pass; jalon 42: the four angle axes made collision-aware, plus a real measurement bug fixed in the test itself; jalon 43: the whole radial layout — base radius, tier step, label offset — recalibrated as one coupled system after a label's own box was found hiding its own marker) aren't re-reviewed here from scratch. Each shipped with its own dedicated tests (bounding-box and point-in-rectangle checks on the exact failure pattern it fixes), the same validation method this review already relies on elsewhere — and each was only found because a real generated chart kept showing visible overlaps after the previous fix, a reminder that the automated tests' own blind spots (not accounting for a label's opaque box, not checking a marker against its own label) were themselves part of the bug.</p>
 
     <div class="verdict-box">
       <strong>No correctness bugs found, and all four minor findings below are now resolved.</strong> Duplicate computation, an untested branch, one uncaught exception class, and stale scaffold metadata — none ever affected the accuracy of a generated chart.
@@ -661,7 +661,7 @@
   </section>
 
   <footer id="methodology">
-    <p><strong>Methodology.</strong> Original review generated at jalon 38 by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s milestone history to distinguish an actual defect from a documented, already-negotiated design decision; refreshed at jalon 41 (file reference and stats resynced, all four findings marked resolved). <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 223 passed, 0 failed, at commit <code>de8fbdc</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>; a third real client validated the pipeline end to end since (jalon 41) but is deliberately not named here.</p>
+    <p><strong>Methodology.</strong> Original review generated at jalon 38 by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s milestone history to distinguish an actual defect from a documented, already-negotiated design decision; refreshed at jalon 41 (stats resynced, findings marked resolved) and again at jalon 43 (three rounds of real, user-reported wheel overlaps — see the code review note above). <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 231 passed, 0 failed, at commit <code>f512875</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>; a third real client validated the pipeline end to end since (jalon 41) but is deliberately not named here.</p>
   </footer>
 
 </div>
