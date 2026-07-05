@@ -34,7 +34,14 @@ voir `interpretation/CLAUDE.md`.
   un second moteur Swiss Ephemeris indépendant de `core/`. Un import tardif
   dans `render_elemental_modal_chart` (vers `builder._distribution_points`)
   évite un cycle `builder -> chart_image -> builder` — même pattern que
-  `dignities.solar_proximity` (jalon 20).
+  `dignities.solar_proximity` (jalon 20). Les constantes radiales de la
+  roue (rayons, pas d'étagement, décalage d'étiquette) forment un système
+  couplé, pas des réglages indépendants : les revoir ensemble, jamais un
+  seul isolément, sous peine de déplacer un chevauchement plutôt que de le
+  résoudre (voir jalon 43 dans le `CLAUDE.md` racine pour l'exemple vécu).
+  `scripts/render_wheel_debug.py` rend la roue seule (PNG) vers
+  `output/wheel_debug/`, sans régénérer tout le `.docx` — pratique pour
+  itérer visuellement sur ces constantes.
 
 ## Deux styles de rendu textuel, selon la nature de la sous-section
 
