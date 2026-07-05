@@ -1,0 +1,663 @@
+<title>Hellenistic Astrology — Codebase Reference &amp; Review</title>
+<meta name="description" content="Technical documentation and code review of the hellenistic-astrology repository." />
+<style>
+  :root {
+    --bg: #eef0e9;
+    --surface: #ffffff;
+    --surface-2: #f6f6f1;
+    --text: #1b1d22;
+    --text-muted: #55585f;
+    --text-faint: #83868d;
+    --accent: #2f3d6b;
+    --accent-soft: #2f3d6b1a;
+    --gold: #8a6a1e;
+    --gold-soft: #8a6a1e1a;
+    --good: #2f6b45;
+    --good-soft: #2f6b451a;
+    --bad: #96362f;
+    --bad-soft: #96362f1a;
+    --border: rgba(27, 29, 34, 0.13);
+    --border-strong: rgba(27, 29, 34, 0.24);
+    --code-bg: #e7e8e0;
+    --shadow: 0 1px 2px rgba(27, 29, 34, 0.06), 0 8px 24px rgba(27, 29, 34, 0.05);
+
+    --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151c;
+      --surface: #1c1e29;
+      --surface-2: #20222e;
+      --text: #eef0f5;
+      --text-muted: #a7abc0;
+      --text-faint: #767a92;
+      --accent: #8b9bdc;
+      --accent-soft: #8b9bdc22;
+      --gold: #d4ac4a;
+      --gold-soft: #d4ac4a22;
+      --good: #6fbf86;
+      --good-soft: #6fbf8622;
+      --bad: #e08579;
+      --bad-soft: #e0857922;
+      --border: rgba(238, 240, 245, 0.14);
+      --border-strong: rgba(238, 240, 245, 0.26);
+      --code-bg: #262838;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14151c;
+    --surface: #1c1e29;
+    --surface-2: #20222e;
+    --text: #eef0f5;
+    --text-muted: #a7abc0;
+    --text-faint: #767a92;
+    --accent: #8b9bdc;
+    --accent-soft: #8b9bdc22;
+    --gold: #d4ac4a;
+    --gold-soft: #d4ac4a22;
+    --good: #6fbf86;
+    --good-soft: #6fbf8622;
+    --bad: #e08579;
+    --bad-soft: #e0857922;
+    --border: rgba(238, 240, 245, 0.14);
+    --border-strong: rgba(238, 240, 245, 0.26);
+    --code-bg: #262838;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #eef0e9;
+    --surface: #ffffff;
+    --surface-2: #f6f6f1;
+    --text: #1b1d22;
+    --text-muted: #55585f;
+    --text-faint: #83868d;
+    --accent: #2f3d6b;
+    --accent-soft: #2f3d6b1a;
+    --gold: #8a6a1e;
+    --gold-soft: #8a6a1e1a;
+    --good: #2f6b45;
+    --good-soft: #2f6b451a;
+    --bad: #96362f;
+    --bad-soft: #96362f1a;
+    --border: rgba(27, 29, 34, 0.13);
+    --border-strong: rgba(27, 29, 34, 0.24);
+    --code-bg: #e7e8e0;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  /* ---------- Header ---------- */
+  header.masthead {
+    border-bottom: 1px solid var(--border-strong);
+    padding-bottom: 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 0.9rem;
+  }
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1.15;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+    color: var(--text);
+  }
+  .dek {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    max-width: 62ch;
+    margin: 0 0 1.6rem;
+  }
+  .statline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6rem;
+    row-gap: 0.6rem;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .stat .n {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .stat .l {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ---------- Nav ---------- */
+  nav.toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0;
+    margin-bottom: 3rem;
+    font-size: 0.88rem;
+  }
+  nav.toc a {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.3rem 0.9rem;
+    border-right: 1px solid var(--border);
+  }
+  nav.toc a:last-child { border-right: none; }
+  nav.toc a:hover { color: var(--accent); }
+
+  /* ---------- Sections ---------- */
+  section { margin-bottom: 3.6rem; }
+  section > h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin: 0 0 0.3rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--border-strong);
+    text-wrap: balance;
+  }
+  .section-note {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    max-width: 68ch;
+    margin: 0.9rem 0 1.6rem;
+  }
+  h3.sub {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 600;
+    margin: 2rem 0 0.2rem;
+    color: var(--text);
+  }
+  p { max-width: 68ch; }
+  code {
+    font-family: var(--font-mono);
+    background: var(--code-bg);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+
+  /* ---------- Pipeline diagram ---------- */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 1.6rem 0 0.6rem;
+    overflow-x: auto;
+    padding-bottom: 0.4rem;
+  }
+  .pstep {
+    flex: 1 1 150px;
+    min-width: 150px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem 1.1rem;
+    position: relative;
+  }
+  .pstep .pn {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .pstep .pt {
+    font-weight: 600;
+    font-size: 0.94rem;
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .pstep .pd {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+  .parrow {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+  @media (max-width: 640px) {
+    .pipeline { flex-direction: column; }
+    .parrow { width: auto; height: 1.4rem; transform: rotate(90deg); }
+  }
+
+  /* ---------- Package legend ---------- */
+  .pkg-legend {
+    display: flex;
+    gap: 1.4rem;
+    flex-wrap: wrap;
+    margin: 1.4rem 0 1.8rem;
+    font-size: 0.85rem;
+  }
+  .pkg-legend .item { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); }
+  .pkg-dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; flex: none; }
+
+  /* ---------- File tables ---------- */
+  .table-scroll { overflow-x: auto; }
+  table.files {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0 2rem;
+    font-size: 0.9rem;
+  }
+  table.files th {
+    text-align: left;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+    padding: 0.5rem 0.8rem 0.5rem 0;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  table.files td {
+    padding: 0.6rem 0.8rem 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.files tr:last-child td { border-bottom: none; }
+  table.files td.file {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  table.files td.loc {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-faint);
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.files td.desc { color: var(--text-muted); }
+
+  /* ---------- Data flow object card ---------- */
+  .dataobj {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.4rem 1.6rem;
+    margin: 1.4rem 0;
+  }
+  .dataobj h4 {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    margin: 0 0 0.7rem;
+    color: var(--accent);
+  }
+  .dataobj ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    columns: 2;
+    column-gap: 2rem;
+    font-size: 0.86rem;
+    color: var(--text-muted);
+  }
+  .dataobj li { break-inside: avoid; margin-bottom: 0.3rem; }
+  .dataobj li code { font-size: 0.86em; }
+  @media (max-width: 560px) { .dataobj ul { columns: 1; } }
+
+  /* ---------- Stat grid (test coverage) ---------- */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 1.4rem 0;
+  }
+  .metric {
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+  }
+  .metric .n {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  .metric .l {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+  }
+
+  /* ---------- Findings ---------- */
+  .finding {
+    border-bottom: 1px solid var(--border);
+    padding: 1.3rem 0;
+  }
+  .finding:first-of-type { border-top: 1px solid var(--border-strong); }
+  .finding-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+  }
+  .finding-title {
+    font-weight: 600;
+    font-size: 1.02rem;
+  }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .tag.simplification { background: var(--accent-soft); color: var(--accent); }
+  .tag.efficiency { background: var(--gold-soft); color: var(--gold); }
+  .tag.robustness { background: var(--bad-soft); color: var(--bad); }
+  .tag.test-coverage { background: var(--good-soft); color: var(--good); }
+  .tag.docs { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+  .finding-loc {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-faint);
+  }
+  .finding p { margin: 0.3rem 0 0; color: var(--text-muted); font-size: 0.94rem; }
+  .finding pre {
+    background: var(--code-bg);
+    padding: 0.7rem 0.9rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    margin: 0.6rem 0 0;
+    border-radius: 4px;
+  }
+  .finding code { white-space: pre; }
+
+  .verdict-box {
+    background: var(--good-soft);
+    border: 1px solid var(--good);
+    border-left: 3px solid var(--good);
+    padding: 1.1rem 1.3rem;
+    margin: 1.6rem 0;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .verdict-box strong { color: var(--good); }
+
+  /* ---------- Methodology / footer ---------- */
+  footer {
+    border-top: 1px solid var(--border-strong);
+    padding-top: 1.6rem;
+    margin-top: 3rem;
+    font-size: 0.82rem;
+    color: var(--text-faint);
+  }
+  footer p { max-width: none; }
+
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Codebase reference · jalon 38</p>
+    <h1 class="title">Hellenistic Astrology</h1>
+    <p class="dek">A file-by-file map of the <code>hellenistic-astrology</code> repository — the whole-sign natal chart pipeline, from Swiss Ephemeris positions to an assembled <code>.docx</code> — followed by a line-level code review of the parts that carry the most risk.</p>
+    <div class="statline">
+      <div class="stat"><span class="n">25</span><span class="l">Python modules</span></div>
+      <div class="stat"><span class="n">3,383</span><span class="l">Lines of source</span></div>
+      <div class="stat"><span class="n">214</span><span class="l">Tests passing</span></div>
+      <div class="stat"><span class="n">2</span><span class="l">Reference natal charts</span></div>
+      <div class="stat"><span class="n">38</span><span class="l">Documented milestones</span></div>
+      <div class="stat"><span class="n">52</span><span class="l">Commits</span></div>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#architecture">Architecture</a>
+    <a href="#files">File reference</a>
+    <a href="#dataflow">Data model</a>
+    <a href="#coverage">Test coverage</a>
+    <a href="#review">Code review</a>
+    <a href="#methodology">Methodology</a>
+  </nav>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <p class="section-note">Three packages, each responsible for one kind of work, wired together by two entry points. <code>core</code> never renders anything; <code>docgen</code> and <code>interpretation</code> never calculate anything — the boundary is enforced by convention and checked in review, not by a type system.</p>
+
+    <h3 class="sub">The document pipeline</h3>
+    <div class="pipeline">
+      <div class="pstep">
+        <span class="pn">Input</span>
+        <span class="pt">birth-data.json</span>
+        <span class="pd">name, lat/long or place, local time + tz or UTC datetime</span>
+      </div>
+      <div class="parrow">→</div>
+      <div class="pstep">
+        <span class="pn">core.chart</span>
+        <span class="pt">build_observation()</span>
+        <span class="pd">Swiss Ephemeris → whole-sign houses, sect, dignities, aspects, Lots, releasing</span>
+      </div>
+      <div class="parrow">→</div>
+      <div class="pstep">
+        <span class="pn">core.observation</span>
+        <span class="pt">Observation</span>
+        <span class="pd">one frozen dataclass — the sole handoff between calculation and rendering</span>
+      </div>
+      <div class="parrow">→</div>
+      <div class="pstep">
+        <span class="pn">docgen + interpretation</span>
+        <span class="pt">.docx + brief.md</span>
+        <span class="pd">Phase 1/2 document, plus a factual brief for human-assisted Phase 3 drafting</span>
+      </div>
+      <div class="parrow">→</div>
+      <div class="pstep">
+        <span class="pn">assembly</span>
+        <span class="pt">_final.docx</span>
+        <span class="pd">appends the reviewed Phase 3 prose — never overwrites the source .docx</span>
+      </div>
+    </div>
+
+    <h3 class="sub">Package layering</h3>
+    <div class="pkg-legend">
+      <span class="item"><span class="pkg-dot" style="background:var(--accent)"></span>core — pure calculation</span>
+      <span class="item"><span class="pkg-dot" style="background:var(--gold)"></span>docgen / interpretation — rendering</span>
+      <span class="item"><span class="pkg-dot" style="background:var(--good)"></span>entry points</span>
+    </div>
+    <p>Two entry points orchestrate the same three packages: <strong>cli.py</strong> (one JSON in, one <code>.docx</code> out) and <strong>mcp_server.py</strong> (four stdio MCP tools — <code>compute_observation</code>, <code>generate_document</code>, <code>generate_interpretation_brief</code>, <code>assemble_final_document</code> — used by Claude Code, Claude Desktop and Mistral Vibe). Two Claude Skills sit above both: <code>hellenistic-astrology</code> orchestrates the full run end to end, with a hard stop for human review before Phase 3 is ever assembled; <code>hellenistic-astrology-phase3</code> holds the drafting rules for that step alone.</p>
+  </section>
+
+  <section id="files">
+    <h2>File reference</h2>
+    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>438bc0c</code>.</p>
+
+    <h3 class="sub">core/ — calculation engine</h3>
+    <div class="table-scroll">
+    <table class="files">
+      <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="file">chart.py</td><td class="loc">167</td><td class="desc">Entry point — <code>build_observation()</code> orchestrates every other core module into one <code>Observation</code>.</td></tr>
+        <tr><td class="file">ephemeris.py</td><td class="loc">80</td><td class="desc">Swiss Ephemeris (<code>pyswisseph</code>) wrapper — planet positions, Ascendant/MC, true North Node. Falls back to Moshier/Moseph theory when no <code>.se1</code> files are installed.</td></tr>
+        <tr><td class="file">houses.py</td><td class="loc">69</td><td class="desc">The 12 signs, whole-sign house numbering, modality table — the one house system this project uses, non-negotiable.</td></tr>
+        <tr><td class="file">sect.py</td><td class="loc">82</td><td class="desc">Diurnal/nocturnal determination and per-planet sect role, including Mercury's heliacal-phase-dependent affinity (jalon 38).</td></tr>
+        <tr><td class="file">dignities.py</td><td class="loc">245</td><td class="desc">Domicile/exaltation/exile/fall, traditional rulerships, triplicity, Egyptian bounds, Chaldean decans, mutual reception, solar proximity.</td></tr>
+        <tr><td class="file">aspects.py</td><td class="loc">137</td><td class="desc">Sign clustering, Ptolemaic aspect-by-sign between clusters, the 3° out-of-sign boundary exception.</td></tr>
+        <tr><td class="file">lots.py</td><td class="loc">24</td><td class="desc">Fortune, Spirit, Eros — each formula flips with sect.</td></tr>
+        <tr><td class="file">lunation.py</td><td class="loc">51</td><td class="desc">Rudhyar's 8 natal lunation phases from the Sun–Moon gap.</td></tr>
+        <tr><td class="file">eclipse.py</td><td class="loc">73</td><td class="desc">Natal "eclipse configuration" — Moon close to a Node <em>and</em> to the nearest syzygy.</td></tr>
+        <tr><td class="file">zodiacal_releasing.py</td><td class="loc">240</td><td class="desc">Valens' periods, L1–L4, peak periods, and the loosing-of-the-bond jump — the densest algorithm in the repo.</td></tr>
+        <tr><td class="file">observation.py</td><td class="loc">101</td><td class="desc"><code>PointPosition</code> / <code>Observation</code> — the frozen dataclasses that are the sole contract between <code>core</code> and everything downstream.</td></tr>
+        <tr><td class="file">timezone.py</td><td class="loc">71</td><td class="desc"><code>BirthData</code> and local→UTC resolution via <code>zoneinfo</code>; requires an explicit UTC datetime before 1916.</td></tr>
+        <tr><td class="file">geocoding.py</td><td class="loc">127</td><td class="desc">Opt-in place-name → coordinates via Nominatim; the only module that touches the network, and only when lat/long are absent.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 class="sub">docgen/ — deterministic .docx rendering</h3>
+    <div class="table-scroll">
+    <table class="files">
+      <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="file">builder.py</td><td class="loc">837</td><td class="desc">Every <code>add_*_section</code>/<code>add_*_table</code> and <code>build_observation_document()</code> — Phase 1 (Observation) and Phase 2 (technical sheet) in full.</td></tr>
+        <tr><td class="file">chart_image.py</td><td class="loc">365</td><td class="desc">Matplotlib rendering — chart wheel (dark theme, jalon 37), element/modality bars, zodiacal releasing timeline. Hand-drawn against <code>core</code>'s own data rather than a second ephemeris engine.</td></tr>
+        <tr><td class="file">styles.py</td><td class="loc">90</td><td class="desc">Table shading/widths, plus the hand-built oxml table-of-contents field python-docx has no native support for.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 class="sub">interpretation/ &amp; root package</h3>
+    <div class="table-scroll">
+    <table class="files">
+      <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="file">interpretation/brief.py</td><td class="loc">194</td><td class="desc">Assembles the factual Phase 3 brief by replaying <code>docgen</code>'s own section functions against a throwaway <code>Document()</code> — zero duplicated facts.</td></tr>
+        <tr><td class="file">cli.py</td><td class="loc">75</td><td class="desc"><code>hellenistic-astrology &lt;file.json&gt;</code> entry point.</td></tr>
+        <tr><td class="file">mcp_server.py</td><td class="loc">124</td><td class="desc">Local stdio MCP server exposing the four tools above as thin wrappers over plain, independently-testable functions.</td></tr>
+        <tr><td class="file">assembly.py</td><td class="loc">118</td><td class="desc">Narrow hand-rolled Markdown parser (headings, bullets, <code>*italic*</code>) that appends reviewed Phase 3 prose to an existing <code>.docx</code>.</td></tr>
+        <tr><td class="file">bibliography.py</td><td class="loc">71</td><td class="desc">HEAD/GET-checks the four bibliography URLs quoted in CLAUDE.md against link rot.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="dataflow">
+    <h2>Data model</h2>
+    <p class="section-note">Everything downstream of <code>core</code> consumes exactly one object graph. Both dataclasses are frozen — a position, once computed, cannot be quietly mutated by a rendering step.</p>
+
+    <div class="dataobj">
+      <h4>PointPosition — one placed point (planet, angle, Node, or Lot)</h4>
+      <ul>
+        <li><code>name, sign, degree_in_sign, house</code></li>
+        <li><code>element, modality, house_quality</code> — universal, all points</li>
+        <li><code>retrograde, speed</code> — classical planets + Nodes only</li>
+        <li><code>essential_dignity</code> — domicile/exaltation/exile/fall/peregrine</li>
+        <li><code>triplicity_dignity, bound_dignity, decan_dignity</code></li>
+        <li><code>sect_role</code> — sect light / benefic / malefic / neutral, in or out of sect</li>
+      </ul>
+    </div>
+    <div class="dataobj">
+      <h4>Observation — the full factual reading of one chart</h4>
+      <ul>
+        <li><code>ascendant, midheaven, planets[7]</code></li>
+        <li><code>part_of_fortune, part_of_spirit, part_of_eros</code></li>
+        <li><code>north_node, south_node</code></li>
+        <li><code>all_points</code> — canonical display order, shared by every table and by cluster/aspect calculation</li>
+        <li><code>clusters, cluster_aspects</code> — sign groupings and the aspects between them</li>
+        <li><code>rulerships, mutual_receptions, solar_proximity</code></li>
+        <li><code>lunation_phase, eclipse</code></li>
+        <li><code>zodiacal_releasing_fortune, zodiacal_releasing_spirit</code> — L1+L2 chapters, 100-year horizon</li>
+      </ul>
+    </div>
+    <p>A recurring pattern worth naming: three modules — <code>dignities.solar_proximity</code>, <code>eclipse.eclipse_configuration</code>, and <code>sect.mercury_is_morning_star</code>'s caller — need <code>aspects.angular_gap</code>, but importing it at module scope would create a cycle (<code>aspects</code> already imports <code>PointPosition</code> from <code>observation</code>, which imports dignity/eclipse types back). All three route around it with the same late import inside the function body — a deliberate, repeated convention rather than three separate workarounds.</p>
+  </section>
+
+  <section id="coverage">
+    <h2>Test coverage</h2>
+    <p class="section-note">The project's own ground truth: two real natal charts, manually validated and never pushed to GitHub, checked against every calculation module.</p>
+    <div class="metric-grid">
+      <div class="metric"><div class="n">214</div><div class="l">tests passing</div></div>
+      <div class="metric"><div class="n">20</div><div class="l">test files</div></div>
+      <div class="metric"><div class="n">0.05°</div><div class="l">regression tolerance</div></div>
+      <div class="metric"><div class="n">2</div><div class="l">reference charts (gitignored)</div></div>
+      <div class="metric"><div class="n">4</div><div class="l">MCP tools tested headless</div></div>
+    </div>
+    <p>Anthony (nocturnal, Paris 1970) and Liam (diurnal, Vitry-sur-Seine 2005) anchor <code>test_regression_anthony.py</code>/<code>_liam.py</code>, which check sign, house, degree (±0.05°), retrograde status, essential dignity and sect role for every point via <code>regression_helpers.assert_observation_matches</code>. Everything without a real-chart fixture — triplicity, Egyptian bounds, Chaldean decans, zodiacal releasing years — was instead cross-checked against two independent published sources before being written, a discipline documented milestone by milestone in <code>CLAUDE.md</code>. Network calls (Nominatim geocoding, bibliography link checks) are mocked in tests; nothing real goes over the wire during <code>pytest</code>.</p>
+  </section>
+
+  <section id="review">
+    <h2>Code review</h2>
+    <p class="section-note">Read line-by-line: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. Findings below are what survived; most things that looked odd on first read turned out to be documented, deliberate, and already validated against the two reference charts.</p>
+
+    <div class="verdict-box">
+      <strong>No correctness bugs found.</strong> The four items below are minor — duplicate computation, an untested branch, one uncaught exception class, and stale scaffold metadata. Nothing here affects the accuracy of a generated chart.
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <span class="finding-title">Sign/degree recomputed up to four times per planet</span>
+        <span class="tag simplification">simplification</span>
+      </div>
+      <span class="finding-loc">core/chart.py — build_observation(), lines 76–95</span>
+      <p>For each of the 7 classical planets, <code>houses.sign_name(raw.longitude)</code> is called separately for <code>essential_dignity</code>, <code>triplicity_dignity</code>, and twice more inside <code>bound_dignity</code>/<code>decan_dignity</code> alongside <code>houses.degree_in_sign(raw.longitude)</code> — then <code>make_point()</code> recomputes both again internally to build the <code>PointPosition</code>. All pure arithmetic (a modulo and a division), so there's no measurable cost, but hoisting <code>sign = houses.sign_name(raw.longitude)</code> once per planet and passing it through would remove the duplication cleanly.</p>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <span class="finding-title">The Swiss Ephemeris file-backed path is never exercised by the test suite</span>
+        <span class="tag test-coverage">test-coverage</span>
+      </div>
+      <span class="finding-loc">core/ephemeris.py — compute_flags()</span>
+      <p><code>data/ephe/</code> is present but empty in this environment (gitignored, populated only by <code>scripts/fetch_ephemeris.py</code>), so <code>compute_flags()</code> always takes the Moshier/Moseph fallback branch (<code>swe.FLG_MOSEPH</code>) — the higher-precision <code>swe.FLG_SWIEPH</code> branch has no test coverage at all, here or presumably in CI. The two are documented as agreeing to ~1 arcsecond, so this is unlikely to hide a real bug, but it means the code path most users would actually run in production (with real ephemeris files installed) is the one path never executed by <code>pytest</code>.</p>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <span class="finding-title">CLI doesn't catch a save failure the same way it catches a calculation failure</span>
+        <span class="tag robustness">robustness</span>
+      </div>
+      <span class="finding-loc">cli.py — main(), lines 60–69</span>
+      <p><code>build_observation()</code> is wrapped in <code>except (GeocodingError, ValueError)</code> and prints a clean <code>erreur : ...</code> line, but <code>document.save(output_path)</code> just below it is not — a permissions problem, a full disk, or a bad <code>-o</code> path would surface as a raw traceback instead of the friendly message the rest of the CLI uses. Same shape of gap doesn't exist in <code>mcp_server.py</code>, which wraps each tool call uniformly via <code>_with_error_handling</code>.</p>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <span class="finding-title">Scaffold metadata never updated</span>
+        <span class="tag docs">docs</span>
+      </div>
+      <span class="finding-loc">pyproject.toml</span>
+      <pre><code>description = "Add your description here"
+version = "0.1.0"</code></pre>
+      <p>Both are still the <code>uv init</code> default, 38 milestones in. Harmless today since nothing is published to an index, but worth a one-line fix before this repository is pointed at from anywhere public-facing (a GitHub "About" blurb, a release tag).</p>
+    </div>
+  </section>
+
+  <footer id="methodology">
+    <p><strong>Methodology.</strong> Generated by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s 38-milestone history to distinguish an actual defect from a documented, already-negotiated design decision. <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 214 passed, 0 failed, at commit <code>438bc0c</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>.</p>
+  </footer>
+
+</div>
