@@ -48,6 +48,17 @@ def angular_gap(longitude_a: float, longitude_b: float) -> float:
     return diff if diff <= 180 else 360 - diff
 
 
+def is_west_of_sun(planet_longitude: float, sun_longitude: float) -> bool:
+    """True si la planète est à l'ouest du Soleil (étoile du matin, se lève
+    avant lui), False si à l'est (étoile du soir) — généralise à une
+    planète quelconque le raisonnement déjà utilisé par
+    `sect.mercury_is_morning_star` (jalon 38), sans modifier cette fonction
+    déjà testée/livrée. Utilisée par `core.phasis` pour distinguer le côté
+    matin/soir des franchissements héliaques du seuil de 15°."""
+    diff = (planet_longitude - sun_longitude + 180) % 360 - 180
+    return diff < 0
+
+
 def is_applying(longitude_a: float, speed_a: float, longitude_b: float, speed_b: float) -> bool:
     """True si l'écart entre A et B se resserre (converge), quelle que soit
     la planète nominalement "la plus rapide" — teste directement le signe

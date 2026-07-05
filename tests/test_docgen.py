@@ -1038,8 +1038,14 @@ def test_build_observation_document_structure(fixture_name):
             observation.planets, observation.mutual_receptions, observation.solar_proximity
         )
     }
+    # Phasis (jalon 45) : recoupé contre observation.phasis, déjà calculé
+    # une seule fois par build_observation pour cette même fixture — pas
+    # de nouvel appel à core.phasis ici, juste le branchement docgen.
+    expected_phasis = {e.planet: e for e in observation.phasis}
     for row in planetary_condition_table.rows[1:]:
-        planet_name, aided_cell, harmed_cell, enclosure_cell, solar_cell, rank_cell = (c.text for c in row.cells)
+        planet_name, aided_cell, harmed_cell, enclosure_cell, solar_cell, rank_cell, phasis_cell = (
+            c.text for c in row.cells
+        )
         expected = expected_conditions[planet_name]
         assert aided_cell == (
             ", ".join(f"{i.source} ({i.aspect.lower()})" for i in expected.bonification_corruption.aided_by) or "—"
@@ -1051,3 +1057,9 @@ def test_build_observation_document_structure(fixture_name):
         expected_solar = expected.solar_phenomenon.tier if expected.solar_phenomenon else None
         assert solar_cell == (expected_solar or "—")
         assert rank_cell == str(expected.rank)
+        expected_event = expected_phasis.get(planet_name)
+        if expected_event is not None and expected_event.in_window:
+            sign = "+" if expected_event.days_from_birth >= 0 else ""
+            assert phasis_cell == f"{expected_event.event_type} (J{sign}{expected_event.days_from_birth})"
+        else:
+            assert phasis_cell == "—"

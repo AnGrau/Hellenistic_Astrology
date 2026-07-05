@@ -1,10 +1,21 @@
 from hellenistic_astrology.core.aspects import (
     build_clusters,
     compute_cluster_aspects,
+    is_west_of_sun,
     out_of_sign_conjunction,
     sign_aspect,
 )
 from hellenistic_astrology.core.observation import PointPosition
+
+
+def test_is_west_of_sun():
+    # Généralise mercury_is_morning_star (jalon 38) : mêmes cas, mêmes
+    # attentes, pour une planète quelconque.
+    assert is_west_of_sun(planet_longitude=10.0, sun_longitude=20.0) is True
+    assert is_west_of_sun(planet_longitude=30.0, sun_longitude=20.0) is False
+    # Enroulement 0°/360°.
+    assert is_west_of_sun(planet_longitude=355.0, sun_longitude=5.0) is True
+    assert is_west_of_sun(planet_longitude=5.0, sun_longitude=355.0) is False
 
 
 def test_sign_aspect_table():

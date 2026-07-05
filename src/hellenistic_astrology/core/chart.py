@@ -6,7 +6,7 @@ Lots, Nœuds, éclipse, lunaison, libération zodiacale) et renvoie l'objet
 from datetime import timedelta
 from pathlib import Path
 
-from . import aspects, condition, dignities, eclipse, ephemeris, geocoding, houses, lots, lunation, sect, zodiacal_releasing
+from . import aspects, condition, dignities, eclipse, ephemeris, geocoding, houses, lots, lunation, phasis, sect, zodiacal_releasing
 from .observation import Observation, PointPosition
 from .timezone import BirthData, resolve_utc
 
@@ -135,6 +135,7 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         {name: raw.longitude for name, raw in raw_planets.items() if name not in {"Soleil", "Lune"}},
     )
     planetary_conditions = condition.compute_planetary_conditions(planets, mutual_receptions, solar_proximity)
+    phasis_events = phasis.compute_phasis_events(jd_ut, flags)
 
     lunation_phase = lunation.lunation_phase(sun_lon, moon_lon)
     eclipse_configuration = eclipse.eclipse_configuration(sun_lon, moon_lon, raw_north_node.longitude)
@@ -169,4 +170,5 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
         lunation_phase=lunation_phase,
         eclipse=eclipse_configuration,
         planetary_conditions=planetary_conditions,
+        phasis=phasis_events,
     )

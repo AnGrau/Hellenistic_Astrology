@@ -83,9 +83,11 @@ ZODIACAL_RELEASING_COLUMN_WIDTHS_DXA = [900, 1600, 1600, 1500, 1500, 1300, 1800]
 
 # Table de condition planétaire (jalon 44) : bonification/corruption,
 # enclosure, phénomène solaire imbriqué, rang (1 = plus favorable, 7 = moins
-# favorable) issus de core.condition.compute_planetary_conditions.
-PLANETARY_CONDITION_HEADER = ["Astre", "Aidé par", "Nui par", "Enclosure", "Phénomène solaire", "Rang"]
-PLANETARY_CONDITION_COLUMN_WIDTHS_DXA = [1300, 2300, 2300, 1700, 1900, 900]
+# favorable) issus de core.condition.compute_planetary_conditions ; phasis
+# (jalon 45, core.phasis.compute_phasis_events) — purement informationnel,
+# ne participe pas au rang.
+PLANETARY_CONDITION_HEADER = ["Astre", "Aidé par", "Nui par", "Enclosure", "Phénomène solaire", "Rang", "Phasis"]
+PLANETARY_CONDITION_COLUMN_WIDTHS_DXA = [1300, 2100, 2100, 1500, 1700, 900, 2200]
 
 # Ordre confirmé par les deux documents de référence (Pérégrin traité à part,
 # voir add_dignities_and_receptions_section) ; Domicile jamais illustré dans
@@ -212,10 +214,16 @@ def add_planetary_condition_table(document: Document, observation: Observation):
     avec les autres tables planète par planète (`add_minor_dignities_table`).
     Aucune fixture Anthony/Liam ne documente cette grille (voir CLAUDE.md,
     jalon 44) ; ombrage du rang extrême, meilleur/pire, même mécanisme que
-    `DIGNITY_SHADING`."""
+    `DIGNITY_SHADING`.
+
+    Colonne "Phasis" (jalon 45, `core.phasis.compute_phasis_events`) :
+    proximité d'une station ou d'un lever/coucher héliaque, purement
+    informationnelle — ne participe jamais au rang ci-dessus. "—" si
+    absente ou hors de la fenêtre de 7 jours."""
     conditions_by_planet: dict[str, PlanetaryCondition] = {
         c.planet: c for c in observation.planetary_conditions
     }
+    phasis_by_planet = {e.planet: e for e in observation.phasis}
 
     table = document.add_table(rows=1, cols=len(PLANETARY_CONDITION_HEADER))
     for cell, text in zip(table.rows[0].cells, PLANETARY_CONDITION_HEADER):
@@ -235,6 +243,12 @@ def add_planetary_condition_table(document: Document, observation: Observation):
             styles.shade_cell(cells[5], styles.DIGNITY_FAVORABLE_SHADING)
         elif condition.rank == len(observation.planets):
             styles.shade_cell(cells[5], styles.DIGNITY_UNFAVORABLE_SHADING)
+        phasis_event = phasis_by_planet.get(planet.name)
+        if phasis_event is not None and phasis_event.in_window:
+            sign = "+" if phasis_event.days_from_birth >= 0 else ""
+            cells[6].text = f"{phasis_event.event_type} (J{sign}{phasis_event.days_from_birth})"
+        else:
+            cells[6].text = "—"
     return table
 
 

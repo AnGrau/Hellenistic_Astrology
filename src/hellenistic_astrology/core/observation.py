@@ -85,6 +85,12 @@ class Observation:
     # ci-dessus (`condition.py` a besoin de `PointPosition` depuis ce
     # module). Voir core.condition pour le détail.
     planetary_conditions: list = field(default_factory=list)
+    # Phasis (jalon 45) : proximité d'une station ou d'un lever/coucher
+    # héliaque, fenêtre de 7 jours. Type concret `phasis.PhasisEvent`, pas
+    # importé ici pour éviter une dépendance circulaire — même raison que
+    # `planetary_conditions`/`clusters` ci-dessus. Voir core.phasis pour
+    # le détail.
+    phasis: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
