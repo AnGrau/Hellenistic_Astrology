@@ -69,6 +69,8 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
             speed=speed,
         )
 
+    mercury_morning_star = sect.mercury_is_morning_star(raw_planets["Mercure"].longitude, sun_lon)
+
     ascendant = make_point("Ascendant", ascendant_lon)
     midheaven = make_point("Milieu du Ciel", midheaven_lon)
     planets = [
@@ -84,7 +86,9 @@ def build_observation(birth: BirthData, ephe_path: str = DEFAULT_EPHE_PATH) -> O
             decan_dignity=dignities.decan_dignity(
                 name, houses.sign_name(raw.longitude), houses.degree_in_sign(raw.longitude)
             ),
-            sect_role=sect.sect_role(name, diurnal),
+            sect_role=sect.sect_role(
+                name, diurnal, mercury_morning_star=mercury_morning_star if name == "Mercure" else None
+            ),
             speed=raw.speed,
         )
         for name, raw in raw_planets.items()

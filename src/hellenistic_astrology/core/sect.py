@@ -24,19 +24,52 @@ _SECT_NATURE: dict[str, tuple[str, str | None]] = {
 }
 
 
-def sect_role(planet: str, diurnal_chart: bool) -> str:
+def mercury_is_morning_star(mercury_longitude: float, sun_longitude: float) -> bool:
+    """True si Mercure est étoile du matin (se lève avant le Soleil), False
+    si étoile du soir (se lève/se couche après lui) — seule planète dont
+    l'affinité de secte n'est pas fixe (`_SECT_NATURE` la note "neutral"),
+    mais dépend de sa phase héliaque à la naissance (doctrine hellénistique,
+    ex. Vettius Valens/Rhetorius tels que rapportés par Chris Brennan ;
+    aucun des deux thèmes de référence ne documente ce point explicitement,
+    voir CLAUDE.md jalon 38).
+
+    La rotation diurne fait culminer/lever plus tôt l'astre dont
+    l'ascension droite (assimilée ici à la longitude écliptique, latitude
+    négligeable pour Mercure) est la plus petite. Mercure "derrière" le
+    Soleil dans l'ordre du zodiaque (longitude moindre) se lève donc avant
+    lui — étoile du matin ; "devant" le Soleil (longitude supérieure), il
+    se lève et se couche après lui — étoile du soir, visible au
+    crépuscule."""
+    diff = (mercury_longitude - sun_longitude + 180) % 360 - 180
+    return diff < 0
+
+
+def sect_role(planet: str, diurnal_chart: bool, mercury_morning_star: bool | None = None) -> str:
     """Rôle de secte d'une planète classique dans une carte donnée.
 
     Règle symétrique : le luminaire dont la secte naturelle ne correspond
     pas à celle de la carte est toujours « Hors secte », qu'il s'agisse du
     Soleil de nuit ou de la Lune de jour (pas de cas « neutre » pour les
     luminaires).
+
+    Mercure (seule planète "neutral" de `_SECT_NATURE`) n'a pas d'affinité
+    fixe : son affinité pour cet appel est déterminée par
+    `mercury_morning_star` (obligatoire dans ce cas, voir
+    `mercury_is_morning_star`) — étoile du matin => affinité diurne (rejoint
+    Jupiter/Saturne dans un thème de jour), étoile du soir => affinité
+    nocturne (rejoint Vénus/Mars dans un thème de nuit). Le résultat suit la
+    même logique de correspondance que les autres planètes, avec le
+    qualificatif "Neutre" plutôt que "Bénéfique"/"Maléfique".
     """
     nature, affinity = _SECT_NATURE[planet]
     chart_affinity = "diurnal" if diurnal_chart else "nocturnal"
 
     if nature == "neutral":
-        return "Neutre"
+        if mercury_morning_star is None:
+            raise ValueError("mercury_morning_star est requis pour une planète neutre (Mercure)")
+        affinity = "diurnal" if mercury_morning_star else "nocturnal"
+        matches = affinity == chart_affinity
+        return "Neutre de secte" if matches else "Neutre hors secte"
 
     matches = affinity == chart_affinity
 
