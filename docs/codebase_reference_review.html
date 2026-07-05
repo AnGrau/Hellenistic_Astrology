@@ -402,6 +402,7 @@
   .tag.test-coverage { background: var(--good-soft); color: var(--good); }
   .tag.docs { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
   .tag.resolved { background: var(--good-soft); color: var(--good); }
+  .tag.open { background: var(--gold-soft); color: var(--gold); }
   .finding.is-resolved { opacity: 0.82; }
   .finding-loc {
     font-family: var(--font-mono);
@@ -446,16 +447,16 @@
 <div class="wrap">
 
   <header class="masthead">
-    <p class="eyebrow">Codebase reference · jalon 43</p>
+    <p class="eyebrow">Codebase reference · jalon 45</p>
     <h1 class="title">Hellenistic Astrology</h1>
     <p class="dek">A file-by-file map of the <code>hellenistic-astrology</code> repository — the whole-sign natal chart pipeline, from Swiss Ephemeris positions to an assembled <code>.docx</code> — followed by a line-level code review of the parts that carry the most risk.</p>
     <div class="statline">
-      <div class="stat"><span class="n">25</span><span class="l">Python modules</span></div>
-      <div class="stat"><span class="n">3,508</span><span class="l">Lines of source</span></div>
-      <div class="stat"><span class="n">231</span><span class="l">Tests passing</span></div>
+      <div class="stat"><span class="n">27</span><span class="l">Python modules</span></div>
+      <div class="stat"><span class="n">4,121</span><span class="l">Lines of source</span></div>
+      <div class="stat"><span class="n">299</span><span class="l">Tests passing</span></div>
       <div class="stat"><span class="n">2</span><span class="l">Reference natal charts</span></div>
-      <div class="stat"><span class="n">43</span><span class="l">Documented milestones</span></div>
-      <div class="stat"><span class="n">63</span><span class="l">Commits</span></div>
+      <div class="stat"><span class="n">45</span><span class="l">Documented milestones</span></div>
+      <div class="stat"><span class="n">66</span><span class="l">Commits</span></div>
     </div>
   </header>
 
@@ -483,7 +484,7 @@
       <div class="pstep">
         <span class="pn">core.chart</span>
         <span class="pt">build_observation()</span>
-        <span class="pd">Swiss Ephemeris → whole-sign houses, sect, dignities, aspects, Lots, releasing</span>
+        <span class="pd">Swiss Ephemeris → whole-sign houses, sect, dignities, aspects, Lots, releasing, planetary condition, phasis</span>
       </div>
       <div class="parrow">→</div>
       <div class="pstep">
@@ -516,24 +517,26 @@
 
   <section id="files">
     <h2>File reference</h2>
-    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>f512875</code>.</p>
+    <p class="section-note">Every module under <code>src/hellenistic_astrology/</code>, grouped by package. Line counts are current as of commit <code>e19f15f</code>.</p>
 
     <h3 class="sub">core/ — calculation engine</h3>
     <div class="table-scroll">
     <table class="files">
       <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
       <tbody>
-        <tr><td class="file">chart.py</td><td class="loc">170</td><td class="desc">Entry point — <code>build_observation()</code> orchestrates every other core module into one <code>Observation</code>. Sign/degree computed once per planet and reused across the four dignity lookups (jalon 39).</td></tr>
-        <tr><td class="file">ephemeris.py</td><td class="loc">80</td><td class="desc">Swiss Ephemeris (<code>pyswisseph</code>) wrapper — planet positions, Ascendant/MC, true North Node. Falls back to Moshier/Moseph theory when no <code>.se1</code> files are installed; both branches directly unit-tested (jalon 39).</td></tr>
+        <tr><td class="file">chart.py</td><td class="loc">174</td><td class="desc">Entry point — <code>build_observation()</code> orchestrates every other core module into one <code>Observation</code>. Sign/degree computed once per planet and reused across the four dignity lookups (jalon 39); also wires <code>condition.compute_planetary_conditions</code> (jalon 44) and <code>phasis.compute_phasis_events</code> (jalon 45).</td></tr>
+        <tr><td class="file">ephemeris.py</td><td class="loc">80</td><td class="desc">Swiss Ephemeris (<code>pyswisseph</code>) wrapper — planet positions, Ascendant/MC, true North Node. Falls back to Moshier/Moseph theory when no <code>.se1</code> files are installed; both branches directly unit-tested (jalon 39). No built-in station finder, which is why <code>phasis.py</code> (below) hand-rolls a day-by-day scan instead.</td></tr>
         <tr><td class="file">houses.py</td><td class="loc">69</td><td class="desc">The 12 signs, whole-sign house numbering, modality table — the one house system this project uses, non-negotiable.</td></tr>
-        <tr><td class="file">sect.py</td><td class="loc">82</td><td class="desc">Diurnal/nocturnal determination and per-planet sect role, including Mercury's heliacal-phase-dependent affinity (jalon 38).</td></tr>
+        <tr><td class="file">sect.py</td><td class="loc">91</td><td class="desc">Diurnal/nocturnal determination and per-planet sect role, including Mercury's heliacal-phase-dependent affinity (jalon 38). Exposes <code>BENEFICS</code>/<code>MALEFICS</code> frozensets (jalon 44) as the single source of truth for benefic/malefic classification used by <code>condition.py</code>.</td></tr>
         <tr><td class="file">dignities.py</td><td class="loc">245</td><td class="desc">Domicile/exaltation/exile/fall, traditional rulerships, triplicity, Egyptian bounds, Chaldean decans, mutual reception, solar proximity.</td></tr>
-        <tr><td class="file">aspects.py</td><td class="loc">137</td><td class="desc">Sign clustering, Ptolemaic aspect-by-sign between clusters, the 3° out-of-sign boundary exception.</td></tr>
+        <tr><td class="file">aspects.py</td><td class="loc">155</td><td class="desc">Sign clustering, Ptolemaic aspect-by-sign between clusters, the 3° out-of-sign boundary exception. <code>is_applying</code> made public (jalon 44) for lunar-application ranking; <code>is_west_of_sun</code> added (jalon 45) generalizing <code>sect.mercury_is_morning_star</code>'s geometry to any planet, for phasis's morning/evening-star labels.</td></tr>
+        <tr><td class="file">condition.py</td><td class="loc">321</td><td class="desc">The planetary condition grid (jalon 44): bonification/corruption by aspect, enclosure by sign, nested cazimi/combustion/sous-les-rayons solar tiers, and a 6-level composite ranking of the 7 classical planets. Relational — needs all 7 planets at once — architecturally closer to <code>aspects.py</code> than <code>dignities.py</code>. No reference-chart fixture exists for this technique; verified against Demetra George/Chris Brennan instead, synthetic tests only.</td></tr>
+        <tr><td class="file">phasis.py</td><td class="loc">182</td><td class="desc">Station and heliacal-crossing proximity (jalon 45), purely informational — deliberately excluded from <code>condition.py</code>'s ranking. Hand-rolled ±500-day daily ephemeris scan (no built-in station finder in <code>pyswisseph</code>); reports only the single nearest event per planet, a documented limitation for Mercury, whose station and heliacal crossing can both land inside the 7-day window at once.</td></tr>
         <tr><td class="file">lots.py</td><td class="loc">24</td><td class="desc">Fortune, Spirit, Eros — each formula flips with sect.</td></tr>
         <tr><td class="file">lunation.py</td><td class="loc">51</td><td class="desc">Rudhyar's 8 natal lunation phases from the Sun–Moon gap.</td></tr>
         <tr><td class="file">eclipse.py</td><td class="loc">73</td><td class="desc">Natal "eclipse configuration" — Moon close to a Node <em>and</em> to the nearest syzygy.</td></tr>
         <tr><td class="file">zodiacal_releasing.py</td><td class="loc">240</td><td class="desc">Valens' periods, L1–L4, peak periods, and the loosing-of-the-bond jump — the densest algorithm in the repo.</td></tr>
-        <tr><td class="file">observation.py</td><td class="loc">101</td><td class="desc"><code>PointPosition</code> / <code>Observation</code> — the frozen dataclasses that are the sole contract between <code>core</code> and everything downstream.</td></tr>
+        <tr><td class="file">observation.py</td><td class="loc">113</td><td class="desc"><code>PointPosition</code> / <code>Observation</code> — the frozen dataclasses that are the sole contract between <code>core</code> and everything downstream. <code>planetary_conditions</code> (jalon 44) and <code>phasis</code> (jalon 45) are both bare, untyped <code>list</code> fields — the same import-cycle workaround already used by <code>clusters</code>/<code>cluster_aspects</code>.</td></tr>
         <tr><td class="file">timezone.py</td><td class="loc">71</td><td class="desc"><code>BirthData</code> and local→UTC resolution via <code>zoneinfo</code>; requires an explicit UTC datetime before 1916.</td></tr>
         <tr><td class="file">geocoding.py</td><td class="loc">127</td><td class="desc">Opt-in place-name → coordinates via Nominatim; the only module that touches the network, and only when lat/long are absent.</td></tr>
       </tbody>
@@ -545,7 +548,7 @@
     <table class="files">
       <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
       <tbody>
-        <tr><td class="file">builder.py</td><td class="loc">837</td><td class="desc">Every <code>add_*_section</code>/<code>add_*_table</code> and <code>build_observation_document()</code> — Phase 1 (Observation) and Phase 2 (technical sheet) in full.</td></tr>
+        <tr><td class="file">builder.py</td><td class="loc">904</td><td class="desc">Every <code>add_*_section</code>/<code>add_*_table</code> and <code>build_observation_document()</code> — Phase 1 (Observation) and Phase 2 (technical sheet) in full, including the "Condition planétaire" table (jalon 44) and its Phasis column (jalon 45), purely informational and never shaded like the ranking column next to it.</td></tr>
         <tr><td class="file">chart_image.py</td><td class="loc">483</td><td class="desc">Matplotlib rendering — chart wheel (dark theme, jalon 37; retrograde marks and leader lines), element/modality bars, zodiacal releasing timeline. Point radius is assigned by real angular proximity across the whole wheel (jalon 40), including the four angle axes AC/DC/MC/IC (jalon 42). Base radius, tier step, and label offset are a coupled system, recalibrated together (jalon 43) after a label's own opaque box was found fully hiding its own marker. Hand-drawn against <code>core</code>'s own data rather than a second ephemeris engine.</td></tr>
         <tr><td class="file">styles.py</td><td class="loc">90</td><td class="desc">Table shading/widths, plus the hand-built oxml table-of-contents field python-docx has no native support for.</td></tr>
       </tbody>
@@ -593,30 +596,32 @@
         <li><code>rulerships, mutual_receptions, solar_proximity</code></li>
         <li><code>lunation_phase, eclipse</code></li>
         <li><code>zodiacal_releasing_fortune, zodiacal_releasing_spirit</code> — L1+L2 chapters, 100-year horizon</li>
+        <li><code>planetary_conditions</code> — bonification/corruption, enclosure, solar tiers, 6-level rank (jalon 44)</li>
+        <li><code>phasis</code> — nearest station/heliacal event per planet, purely informational (jalon 45)</li>
       </ul>
     </div>
-    <p>A recurring pattern worth naming: three modules — <code>dignities.solar_proximity</code>, <code>eclipse.eclipse_configuration</code>, and <code>sect.mercury_is_morning_star</code>'s caller — need <code>aspects.angular_gap</code>, but importing it at module scope would create a cycle (<code>aspects</code> already imports <code>PointPosition</code> from <code>observation</code>, which imports dignity/eclipse types back). All three route around it with the same late import inside the function body — a deliberate, repeated convention rather than three separate workarounds.</p>
+    <p>A recurring pattern worth naming: three modules — <code>dignities.solar_proximity</code>, <code>eclipse.eclipse_configuration</code>, and <code>sect.mercury_is_morning_star</code>'s caller — need <code>aspects.angular_gap</code>, but importing it at module scope would create a cycle (<code>aspects</code> already imports <code>PointPosition</code> from <code>observation</code>, which imports dignity/eclipse types back). All three route around it with the same late import inside the function body — a deliberate, repeated convention rather than three separate workarounds. <code>condition.py</code> and <code>phasis.py</code> (jalons 44–45) need the same helper but sit on the other side of that cycle — nothing downstream of them ever imports them back — so both import <code>aspects</code> normally at module scope, no late import needed; verified by tracing the import graph rather than assumed.</p>
   </section>
 
   <section id="coverage">
     <h2>Test coverage</h2>
     <p class="section-note">The project's own ground truth: two real natal charts, manually validated and never pushed to GitHub, checked against every calculation module.</p>
     <div class="metric-grid">
-      <div class="metric"><div class="n">231</div><div class="l">tests passing</div></div>
-      <div class="metric"><div class="n">21</div><div class="l">test files</div></div>
+      <div class="metric"><div class="n">299</div><div class="l">tests passing</div></div>
+      <div class="metric"><div class="n">23</div><div class="l">test files</div></div>
       <div class="metric"><div class="n">0.05°</div><div class="l">regression tolerance</div></div>
       <div class="metric"><div class="n">2</div><div class="l">reference charts (gitignored)</div></div>
       <div class="metric"><div class="n">4</div><div class="l">MCP tools tested headless</div></div>
     </div>
-    <p>Anthony (nocturnal, Paris 1970) and Liam (diurnal, Vitry-sur-Seine 2005) anchor <code>test_regression_anthony.py</code>/<code>_liam.py</code>, which check sign, house, degree (±0.05°), retrograde status, essential dignity and sect role for every point via <code>regression_helpers.assert_observation_matches</code>. Everything without a real-chart fixture — triplicity, Egyptian bounds, Chaldean decans, zodiacal releasing years — was instead cross-checked against two independent published sources before being written, a discipline documented milestone by milestone in <code>CLAUDE.md</code>. Network calls (Nominatim geocoding, bibliography link checks) are mocked in tests; nothing real goes over the wire during <code>pytest</code>.</p>
+    <p>Anthony (nocturnal, Paris 1970) and Liam (diurnal, Vitry-sur-Seine 2005) anchor <code>test_regression_anthony.py</code>/<code>_liam.py</code>, which check sign, house, degree (±0.05°), retrograde status, essential dignity and sect role for every point via <code>regression_helpers.assert_observation_matches</code>. Everything without a real-chart fixture — triplicity, Egyptian bounds, Chaldean decans, zodiacal releasing years, the planetary condition grid (jalon 44), phasis (jalon 45) — was instead cross-checked against independent published sources (or, for phasis's search-window size, real empirical benchmarks a Plan agent ran directly against the live ephemeris) before being written, a discipline documented milestone by milestone in <code>CLAUDE.md</code>. <code>test_condition.py</code> and <code>test_phasis.py</code> both split synthetic unit tests (pure logic, no ephemeris) from real-chart integration tests that only assert plausibility, never an exact expected value neither reference chart documents. Network calls (Nominatim geocoding, bibliography link checks) are mocked in tests; nothing real goes over the wire during <code>pytest</code>.</p>
   </section>
 
   <section id="review">
     <h2>Code review</h2>
-    <p class="section-note">Read line-by-line at jalon 38: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. The four findings below were all fixed the same day (jalon 39); nothing is currently open. <code>chart_image.py</code>'s three subsequent rewrites (jalon 40: per-cluster staggering replaced by a global angular-proximity pass; jalon 42: the four angle axes made collision-aware, plus a real measurement bug fixed in the test itself; jalon 43: the whole radial layout — base radius, tier step, label offset — recalibrated as one coupled system after a label's own box was found hiding its own marker) aren't re-reviewed here from scratch. Each shipped with its own dedicated tests (bounding-box and point-in-rectangle checks on the exact failure pattern it fixes), the same validation method this review already relies on elsewhere — and each was only found because a real generated chart kept showing visible overlaps after the previous fix, a reminder that the automated tests' own blind spots (not accounting for a label's opaque box, not checking a marker against its own label) were themselves part of the bug.</p>
+    <p class="section-note">Read line-by-line at jalon 38: every module in <code>core/</code>, <code>docgen/</code>, and <code>interpretation/</code>, plus <code>cli.py</code>, <code>mcp_server.py</code>, <code>assembly.py</code>, and <code>bibliography.py</code> — about 3,400 lines. The four findings below were all fixed the same day (jalon 39). <code>chart_image.py</code>'s three subsequent rewrites (jalon 40: per-cluster staggering replaced by a global angular-proximity pass; jalon 42: the four angle axes made collision-aware, plus a real measurement bug fixed in the test itself; jalon 43: the whole radial layout — base radius, tier step, label offset — recalibrated as one coupled system after a label's own box was found hiding its own marker) aren't re-reviewed here from scratch. Each shipped with its own dedicated tests (bounding-box and point-in-rectangle checks on the exact failure pattern it fixes), the same validation method this review already relies on elsewhere — and each was only found because a real generated chart kept showing visible overlaps after the previous fix, a reminder that the automated tests' own blind spots (not accounting for a label's opaque box, not checking a marker against its own label) were themselves part of the bug. <code>condition.py</code> (jalon 44) and <code>phasis.py</code> (jalon 45) are two entirely new modules added since the original review and aren't re-reviewed line-by-line here either — each already carries its own dedicated synthetic test suite (54 and 20 tests respectively), the same trade-off already made for the wheel's rewrites. One item below is genuinely open: a completeness gap surfaced while answering a direct question about whether the MCP server or Skills needed updating for phasis, not by a review pass.</p>
 
     <div class="verdict-box">
-      <strong>No correctness bugs found, and all four minor findings below are now resolved.</strong> Duplicate computation, an untested branch, one uncaught exception class, and stale scaffold metadata — none ever affected the accuracy of a generated chart.
+      <strong>No correctness bugs found. Four of the five findings below are resolved; one is open.</strong> Duplicate computation, an untested branch, one uncaught exception class, and stale scaffold metadata were all fixed the same day (jalon 39) they were found — none ever affected the accuracy of a generated chart. The fifth, found at jalon 45, is a real scope gap rather than a bug: the Phase 3 brief never surfaces the planetary condition grid or phasis at all.
     </div>
 
     <div class="finding is-resolved">
@@ -658,10 +663,19 @@
       <span class="finding-loc">pyproject.toml</span>
       <p><code>description</code> and <code>version</code> were still the <code>uv init</code> defaults, 38 milestones in. <strong>Fix:</strong> <code>description</code> now matches the project's real one-line summary. <code>version</code> was deliberately left at <code>0.1.0</code> — there's no established release/versioning policy for this project yet, so bumping it would mean inventing one unilaterally rather than fixing stale scaffolding.</p>
     </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <span class="finding-title">The Phase 3 brief never surfaces the planetary condition grid or phasis</span>
+        <span class="tag open">open · jalon 45</span>
+      </div>
+      <span class="finding-loc">interpretation/brief.py — build_interpretation_brief()</span>
+      <p><code>core.condition.compute_planetary_conditions</code> (jalon 44) and <code>core.phasis.compute_phasis_events</code> (jalon 45) are both computed on every <code>Observation</code> and rendered in the <code>.docx</code>'s "Condition planétaire" table, but <code>brief.py</code> — written at jalon 26, before either existed — was never extended to read <code>observation.planetary_conditions</code> or <code>observation.phasis</code>. The Phase 3 skill drafts strictly from the brief (never from calculation it hasn't been handed), so bonification/corruption, enclosure, solar-phenomena tiers, ranking, and phasis are all currently invisible to Phase 3 prose. Not a bug — nothing downstream produces a wrong result — but a real completeness gap: found while answering a direct question about whether the MCP server or Skills needed updating for phasis, not by a dedicated review pass. Left open pending a scoped decision on how much of the grid belongs in interpretive prose, and in what form.</p>
+    </div>
   </section>
 
   <footer id="methodology">
-    <p><strong>Methodology.</strong> Original review generated at jalon 38 by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s milestone history to distinguish an actual defect from a documented, already-negotiated design decision; refreshed at jalon 41 (stats resynced, findings marked resolved) and again at jalon 43 (three rounds of real, user-reported wheel overlaps — see the code review note above). <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 231 passed, 0 failed, at commit <code>f512875</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>; a third real client validated the pipeline end to end since (jalon 41) but is deliberately not named here.</p>
+    <p><strong>Methodology.</strong> Original review generated at jalon 38 by reading every file under <code>src/hellenistic_astrology/</code> in full (not excerpts), cross-referenced against <code>CLAUDE.md</code>'s milestone history to distinguish an actual defect from a documented, already-negotiated design decision; refreshed at jalon 41 (stats resynced, findings marked resolved), again at jalon 43 (three rounds of real, user-reported wheel overlaps — see the code review note above), and again at jalon 45 (stats resynced for two entirely new modules, <code>condition.py</code> and <code>phasis.py</code>, added since the original review and not re-reviewed line-by-line here; one open completeness gap added — the Phase 3 brief not surfacing either — found while answering a direct question about MCP/Skill staleness rather than during a review pass). <code>zodiacal_releasing.py</code>'s algorithmic correctness (the densest module in the repo) was not re-derived from first principles here — it's treated as trusted, on the strength of the project's own three-independent-source verification and exact-date matching against both reference charts already on record. Test run: <code>uv run pytest -q</code>, 299 passed, 0 failed, at commit <code>e19f15f</code> on <code>master</code>. No personal birth data appears in this document — Anthony and Liam are referenced only by the same first names already used throughout the project's own <code>CLAUDE.md</code>; a third real client validated the pipeline end to end since (jalon 41) but is deliberately not named here.</p>
   </footer>
 
 </div>
